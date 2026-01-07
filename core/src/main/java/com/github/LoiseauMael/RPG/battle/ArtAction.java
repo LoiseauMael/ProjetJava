@@ -1,57 +1,47 @@
 package com.github.LoiseauMael.RPG.battle;
 
 import com.github.LoiseauMael.RPG.Fighter;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.Array;
 
 public class ArtAction extends BattleAction {
+
     private int paCost;
-    private float damageMultiplier;
+    private float multiplier;
 
     public ArtAction(String name, int paCost, float multiplier) {
-        // Portée de 2.0f pour les Arts (Cercle proche)
-        super(name, "Art physique (Coût: " + paCost + " PA)", 2.0f);
+        super(name, "Technique physique (x" + multiplier + ")", 1.5f);
         this.paCost = paCost;
-        this.damageMultiplier = multiplier;
+        this.multiplier = multiplier;
+    }
+
+    @Override
+    public int getAPCost() {
+        return paCost;
+    }
+
+    @Override
+    public int getMPCost() {
+        return 0; // Pas de coût en mana pour les arts physiques
     }
 
     @Override
     public boolean canExecute(Fighter user) {
-        return user.getPA() >= paCost;
-    }
-
-    /**
-     * NOUVEAU : Retourne les cases accessibles (Cercle court).
-     */
-    @Override
-    public Array<Vector2> getTargetableTiles(Fighter user) {
-        Array<Vector2> tiles = new Array<>();
-
-        float centerX = user.get_positionX() + (user.getSprite().getWidth() / 2f);
-        float centerY = user.get_positionY() + (user.getSprite().getHeight() / 2f);
-
-        int cx = (int) Math.floor(centerX);
-        int cy = (int) Math.floor(centerY);
-        int r = (int) Math.ceil(this.range);
-
-        for (int x = cx - r; x <= cx + r; x++) {
-            for (int y = cy - r; y <= cy + r; y++) {
-                if (Vector2.dst(cx, cy, x, y) <= this.range) {
-                    tiles.add(new Vector2(x, y));
-                }
-            }
-        }
-        return tiles;
+        return user.getPA() >= getAPCost();
     }
 
     @Override
     public void execute(Fighter user, Fighter target) {
-        user.setPA(user.getPA() - paCost);
+        // 1. Payer le coût en PA (on utilise restorePA avec une valeur négative)
+        user.restorePA(-getAPCost());
 
-        int damage = Math.max(1, (int)(user.getFOR() * damageMultiplier) - target.getDEF());
-        target.setPV(target.getPV() - damage);
+        // 2. Calcul des dégâts : (Force * Multiplicateur) - Défense ennemie
+        int damage = (int)(user.getFOR() * multiplier) - target.getDEF();
 
-        Gdx.app.log("Battle", user.getClass().getSimpleName() + " utilise l'art " + name + " ! " + damage + " dégâts.");
+        if (damage < 1) damage = 1;
+
+        // 3. Appliquer les dégâts
+        target.takeDamage(damage);
+
+        // --- NOUVEAU LOG ---
+        BattleSystem.addLog(user.getClass().getSimpleName() + " utilise " + getName() + " et inflige " + damage + " degats !");
     }
 }

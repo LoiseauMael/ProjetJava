@@ -9,19 +9,17 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import com.github.LoiseauMael.RPG.items.Item; // Import nécessaire
+
+// Imports Items & Equipment
+import com.github.LoiseauMael.RPG.items.Item;
+import com.github.LoiseauMael.RPG.items.Equipment;
+import com.github.LoiseauMael.RPG.items.Weapon;
+import com.github.LoiseauMael.RPG.items.Armor;
+import com.github.LoiseauMael.RPG.items.Relic;
 
 public abstract class Player extends Fighter implements Disposable {
 
     private final Texture texture;
-
-    // --- ARME & ATTAQUE ---
-    protected Sprite weaponSprite;
-    protected Texture weaponTexture;
-    public boolean isAttacking = false;
-    protected float attackTimer = 0f;
-
-    private static final float ATTACK_DURATION = 0.25f;
 
     // 0=Bas, 1=Gauche, 2=Droite, 3=Haut
     private int currentDirection = 0;
@@ -40,35 +38,26 @@ public abstract class Player extends Fighter implements Disposable {
     private TextureRegion currentIdleFrame;
     private float stateTime;
 
-    private static final float SPEED = 4f;
+    private static final float SPEED = 6f;
     private static final int FRAME_WIDTH = 32;
     private static final int FRAME_HEIGHT = 32;
 
     // --- INVENTAIRE ---
     private Array<Item> inventory;
 
+    // --- EQUIPEMENT (Slots) ---
+    private Weapon equippedWeapon;
+    private Armor equippedArmor;
+    private Relic equippedRelic;
+
     protected Player(float positionX, float positionY, float velocityX, float velocityY,
                      int PV, int PM, int PA, int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP,
-                     Sprite sprite, Texture texture, String weaponPath) {
+                     Sprite sprite, Texture texture) {
 
         super(positionX, positionY, velocityX, velocityY, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, sprite);
 
         this.texture = texture;
-
-        // Initialisation de l'inventaire
         this.inventory = new Array<>();
-
-        // --- CHARGEMENT ARME ---
-        if (weaponPath != null) {
-            this.weaponTexture = new Texture(Gdx.files.internal(weaponPath));
-            this.weaponSprite = new Sprite(this.weaponTexture);
-
-            float desiredHeight = 1.1f;
-            float aspect = (float) weaponSprite.getWidth() / weaponSprite.getHeight();
-            float desiredWidth = desiredHeight * aspect;
-            this.weaponSprite.setSize(desiredWidth, desiredHeight);
-            this.weaponSprite.setOrigin(desiredWidth / 2f, 0f);
-        }
 
         // --- ANIMATIONS ---
         TextureRegion[][] tmp = TextureRegion.split(this.texture, FRAME_WIDTH, FRAME_HEIGHT);
@@ -104,14 +93,7 @@ public abstract class Player extends Fighter implements Disposable {
         stateTime += delta;
         move(get_velocityX() * delta, get_velocityY() * delta);
 
-        if (isAttacking) {
-            attackTimer += delta;
-            if (attackTimer >= ATTACK_DURATION) {
-                isAttacking = false;
-                attackTimer = 0;
-            }
-        }
-
+        // Gestion Animation Déplacement
         float vx = get_velocityX();
         float vy = get_velocityY();
         boolean isMoving = Math.abs(vx) > 0.01f || Math.abs(vy) > 0.01f;
@@ -154,24 +136,98 @@ public abstract class Player extends Fighter implements Disposable {
             if (Gdx.input.isKeyPressed(Input.Keys.A)) set_velocityX(-SPEED);
             else if (Gdx.input.isKeyPressed(Input.Keys.D)) set_velocityX(SPEED);
         }
+    }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && !isAttacking) {
-            performAttack();
+    // ==========================================
+    // GESTION EQUIPEMENT & STATS
+    // ==========================================
+
+    public String equip(Equipment item) {
+        if (!item.canEquip(this)) {
+            return "Impossible : Classe invalide !";
         }
+
+        Equipment oldItem = null;
+
+        if (item instanceof Weapon) {
+            oldItem = equippedWeapon;
+            equippedWeapon = (Weapon) item;
+        }
+        else if (item instanceof Armor) {
+            oldItem = equippedArmor;
+            equippedArmor = (Armor) item;
+        }
+        else if (item instanceof Relic) {
+            oldItem = equippedRelic;
+            equippedRelic = (Relic) item;
+        }
+
+        if (oldItem != null) {
+            addItem(oldItem);
+        }
+
+        if (item.getCount() > 1) {
+            item.addCount(-1);
+        } else {
+            inventory.removeValue(item, true);
+        }
+
+        return "Equipé : " + item.getName();
     }
 
-    protected void performAttack() {
-        isAttacking = true;
-        attackTimer = 0f;
+    public void unequip(Equipment item) {
+        if (item == equippedWeapon) equippedWeapon = null;
+        else if (item == equippedArmor) equippedArmor = null;
+        else if (item == equippedRelic) equippedRelic = null;
+
+        addItem(item);
+    }
+
+    public Weapon getEquippedWeapon() { return equippedWeapon; }
+    public Armor getEquippedArmor() { return equippedArmor; }
+    public Relic getEquippedRelic() { return equippedRelic; }
+
+    @Override
+    public int getFOR() {
+        int total = super.FOR;
+        if (equippedWeapon != null) total += equippedWeapon.bonusFOR;
+        return total;
+    }
+
+    @Override
+    public int getFORM() {
+        int total = super.FORM;
+        if (equippedWeapon != null) total += equippedWeapon.bonusFORM;
+        return total;
+    }
+
+    @Override
+    public int getDEF() {
+        int total = super.DEF;
+        if (equippedArmor != null) total += equippedArmor.bonusDEF;
+        return total;
+    }
+
+    @Override
+    public int getDEFM() {
+        int total = super.DEFM;
+        if (equippedArmor != null) total += equippedArmor.bonusDEFM;
+        return total;
+    }
+
+    public float getDamageMultiplier() {
+        return (equippedRelic != null) ? equippedRelic.damageMultiplier : 1.0f;
+    }
+
+    public float getDefenseMultiplier() {
+        return (equippedRelic != null) ? equippedRelic.defenseMultiplier : 1.0f;
     }
 
     // ==========================================
-    // GESTION XP / NIVEAUX / STATS
+    // GESTION XP / NIVEAUX / SETTERS POUR SAUVEGARDE
     // ==========================================
 
-    public int getMaxExp() {
-        return level * 100;
-    }
+    public int getMaxExp() { return level * 100; }
 
     public void gainExp(int amount) {
         this.exp += amount;
@@ -182,35 +238,31 @@ public abstract class Player extends Fighter implements Disposable {
     }
 
     private int getStatIncrease(int currentStatValue) {
-        int increase = (int) (currentStatValue * 0.10f); // 10%
+        int increase = (int) (currentStatValue * 0.10f);
         return Math.max(1, increase);
     }
 
     private void levelUp() {
         this.level++;
-
-        this.maxPV += getStatIncrease(this.maxPV);
-        this.PV = this.maxPV;
-
-        this.maxPM += getStatIncrease(this.maxPM);
-        this.PM = this.maxPM;
-
+        this.maxPV += getStatIncrease(this.maxPV); this.PV = this.maxPV;
+        this.maxPM += getStatIncrease(this.maxPM); this.PM = this.maxPM;
         this.FOR += getStatIncrease(this.FOR);
         this.DEF += getStatIncrease(this.DEF);
         this.FORM += getStatIncrease(this.FORM);
         this.DEFM += getStatIncrease(this.DEFM);
         this.VIT += getStatIncrease(this.VIT);
-
-        if (this.maxPA > 0) {
-            this.maxPA += getStatIncrease(this.maxPA);
-            this.PA = this.maxPA;
-        }
-
-        Gdx.app.log("Player", "NIVEAU UP ! Niveau " + level + " atteint ! Stats +10%.");
+        if (this.maxPA > 0) { this.maxPA += getStatIncrease(this.maxPA); this.PA = this.maxPA; }
+        Gdx.app.log("Player", "NIVEAU UP ! Niveau " + level);
     }
 
+    // --- SETTERS POUR LE CHARGEMENT (LOAD) ---
+    public void setLevel(int level) { this.level = level; }
+    public void setExp(int exp) { this.exp = exp; }
+    public void setMoney(int money) { this.money = money; } // Pour écraser l'or
+    // Les PV/PM sont déjà gérés par setPV/setPM dans Fighter
+
     // ==========================================
-    // GESTION INVENTAIRE
+    // INVENTAIRE
     // ==========================================
 
     public void addItem(Item newItem) {
@@ -225,14 +277,10 @@ public abstract class Player extends Fighter implements Disposable {
 
     public void consumeItem(Item item) {
         item.use(this);
-        if (item.getCount() <= 0) {
-            inventory.removeValue(item, true);
-        }
+        if (item.getCount() <= 0) inventory.removeValue(item, true);
     }
 
-    public Array<Item> getInventory() {
-        return inventory;
-    }
+    public Array<Item> getInventory() { return inventory; }
 
     // ==========================================
     // RENDU & HELPERS
@@ -240,67 +288,15 @@ public abstract class Player extends Fighter implements Disposable {
 
     @Override
     public void draw(SpriteBatch batch) {
-        boolean weaponBehind = (currentDirection == 3);
-
-        if (weaponBehind) drawWeapon(batch);
         super.draw(batch);
-        if (!weaponBehind) drawWeapon(batch);
-    }
-
-    private void drawWeapon(SpriteBatch batch) {
-        if (isAttacking && weaponSprite != null) {
-            float cx = get_positionX() + 0.5f;
-            float cy = get_positionY() + 0.4f;
-            float rotation = 0;
-            float handOffsetX = 0;
-            float handOffsetY = 0;
-            boolean flip = false;
-
-            float progress = attackTimer / ATTACK_DURATION;
-
-            if (currentDirection == 0) { // BAS
-                handOffsetX = -0.2f; handOffsetY = -0.3f;
-                rotation = 225 + (-90 * progress);
-            } else if (currentDirection == 3) { // HAUT
-                handOffsetX = 0.2f; handOffsetY = 0.1f;
-                rotation = 45 + (90 * progress);
-            } else {
-                float rightBaseAngle = -45;
-                float rightSweep = -90;
-                float rightHandX = 0.3f;
-                float rightHandY = -0.2f;
-
-                if (currentDirection == 2) { // DROITE
-                    rotation = rightBaseAngle + (rightSweep * progress);
-                    handOffsetX = rightHandX;
-                    handOffsetY = rightHandY;
-                } else { // GAUCHE
-                    rotation = -(rightBaseAngle + (rightSweep * progress));
-                    handOffsetX = -rightHandX;
-                    handOffsetY = rightHandY;
-                    flip = true;
-                }
-            }
-
-            weaponSprite.setFlip(flip, false);
-            weaponSprite.setPosition(
-                (cx + handOffsetX) - weaponSprite.getOriginX(),
-                (cy + handOffsetY) - weaponSprite.getOriginY()
-            );
-            weaponSprite.setRotation(rotation);
-            weaponSprite.draw(batch);
-        }
     }
 
     @Override
     public void dispose() {
         if (this.texture != null) this.texture.dispose();
-        if (this.weaponTexture != null) this.weaponTexture.dispose();
     }
 
-    public int getDirection() {
-        return currentDirection;
-    }
+    public int getDirection() { return currentDirection; }
 
     public void setDirection(int direction) {
         this.currentDirection = direction;
@@ -308,13 +304,11 @@ public abstract class Player extends Fighter implements Disposable {
             case 1: this.currentIdleFrame = idleLeft; break;
             case 2: this.currentIdleFrame = idleRight; break;
             case 3: this.currentIdleFrame = idleBack; break;
-            case 0:
-            default: this.currentIdleFrame = idleFront; break;
+            case 0: default: this.currentIdleFrame = idleFront; break;
         }
         this.getSprite().setRegion(currentIdleFrame);
     }
 
-    // Accesseurs pour le Menu (Assurez-vous que Fighter a les getters correspondants si private)
     public int getMaxPV() { return maxPV; }
     public int getMaxPM() { return maxPM; }
     public int getMaxPA() { return maxPA; }

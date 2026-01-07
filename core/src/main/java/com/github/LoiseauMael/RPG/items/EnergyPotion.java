@@ -1,20 +1,24 @@
 package com.github.LoiseauMael.RPG.items;
 
 import com.github.LoiseauMael.RPG.Fighter;
-import com.badlogic.gdx.Gdx;
 
-public class EnergyPotion extends Consumable {
-    private int paAmount;
+public class EnergyPotion extends Item {
+    private int energyAmount;
 
-    public EnergyPotion(String name, String description, int paAmount) {
+    public EnergyPotion(String name, String description, int energyAmount) {
         super(name, description);
-        this.paAmount = paAmount;
+        this.energyAmount = energyAmount;
+        this.count = 1;
     }
 
     @Override
-    protected void applyEffect(Fighter target) {
-        // Logique de soin PA
-        target.setPA(target.getPA() + paAmount);
-        Gdx.app.log("Inventaire", target.getClass().getSimpleName() + " récupère " + paAmount + " PA.");
+    public void use(Fighter target) {
+        // CORRECTION ICI : On appelle la nouvelle méthode créée dans Fighter
+        target.restorePA(energyAmount);
+        this.count--;
+    }
+
+    public int getAmount() {
+        return energyAmount;
     }
 }

@@ -4,93 +4,115 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 
-public class Entity {
-    private float positionX;
-    private float positionY;
-    private float velocityX;
-    private float velocityY;
-    private Sprite sprite;
-    protected final Rectangle bounds;
-    private float hitboxOffsetX;
-    private float hitboxOffsetY;
-    private static CollisionSystem collisionSystem;
+public abstract class Entity {
 
-    public static void setCollisionSystem(CollisionSystem system) {
-        if (system == null) throw new IllegalArgumentException("CollisionSystem nul");
-        collisionSystem = system;
-    }
+    protected float positionX;
+    protected float positionY;
+    protected float velocityX;
+    protected float velocityY;
+    protected Sprite sprite;
+    protected Rectangle boundingBox;
 
-    public Entity (float positionX, float positionY, float velocityX, float velocityY, Sprite sprite) {
+    protected int currentDirection = 0;
+    protected static CollisionSystem collisionSystem;
+
+    public Entity(float positionX, float positionY, Sprite sprite) {
         this.positionX = positionX;
         this.positionY = positionY;
-        this.velocityX = velocityX;
-        this.velocityY = velocityY;
         this.sprite = sprite;
+        this.sprite.setPosition(positionX, positionY);
 
-        // Hitbox standard
-        float hitboxWidth = 0.6f;
-        float hitboxHeight = 0.4f;
+        // --- CORRECTION : HITBOX PLUS PETITE (PIEDS) ---
+        // Le sprite fait 2.0f de large/haut.
+        // On veut une hitbox de 1.0f de large et 0.6f de haut (juste les pieds).
+        float boxW = sprite.getWidth() * 0.5f;
+        float boxH = sprite.getHeight() * 0.3f;
 
-        if (this.sprite != null) {
-            float spriteWidth = this.sprite.getWidth();
-            this.hitboxOffsetX = (spriteWidth - hitboxWidth) / 2f;
-            this.hitboxOffsetY = 0f;
-        } else {
-            this.hitboxOffsetX = 0;
-            this.hitboxOffsetY = 0;
+        // On crée la boite. On la mettra à jour dans updateBoxPosition()
+        this.boundingBox = new Rectangle(positionX, positionY, boxW, boxH);
+
+        // Mise à jour initiale
+        updateBoxPosition();
+    }
+
+    public static void setCollisionSystem(CollisionSystem system) {
+        Entity.collisionSystem = system;
+    }
+
+    /**
+     * Met à jour la position de la hitbox par rapport au sprite.
+     * Elle est centrée horizontalement et collée en bas.
+     */
+    protected void updateBoxPosition() {
+        // Centrer la box en X : PositionX + (LargeurSprite - LargeurBox) / 2
+        float offsetX = (sprite.getWidth() - boundingBox.width) / 2;
+
+        // En Y, on laisse à 0 (les pieds)
+        float offsetY = 0;
+
+        boundingBox.setPosition(positionX + offsetX, positionY + offsetY);
+    }
+
+    public void move(float amountX, float amountY) {
+        // 1. Test X
+        float oldX = positionX;
+        positionX += amountX;
+        updateBoxPosition(); // On bouge la boite virtuellement
+
+        if (collisionSystem != null && collisionSystem.isColliding(boundingBox)) {
+            positionX = oldX; // Collision ! On annule
+            updateBoxPosition();
         }
 
-        this.bounds = new Rectangle(positionX + hitboxOffsetX, positionY + hitboxOffsetY, hitboxWidth, hitboxHeight);
+        // 2. Test Y
+        float oldY = positionY;
+        positionY += amountY;
+        updateBoxPosition(); // On bouge la boite virtuellement
 
-        if (this.sprite != null) {
-            this.sprite.setPosition(positionX, positionY);
+        if (collisionSystem != null && collisionSystem.isColliding(boundingBox)) {
+            positionY = oldY; // Collision ! On annule
+            updateBoxPosition();
+        }
+
+        // 3. Mise à jour finale du sprite
+        sprite.setPosition(positionX, positionY);
+    }
+
+    public void update(float delta) {
+        // La position physique est gérée par move().
+        // Ici on gère juste l'animation et la mise à jour visuelle.
+
+        // Si on a bougé manuellement (sans move), on synchronise
+        sprite.setPosition(positionX, positionY);
+        updateBoxPosition();
+
+        if (Math.abs(velocityX) > 0.01f || Math.abs(velocityY) > 0.01f) {
+            if (Math.abs(velocityX) > Math.abs(velocityY)) {
+                currentDirection = (velocityX > 0) ? 2 : 1;
+            } else {
+                currentDirection = (velocityY > 0) ? 3 : 0;
+            }
         }
     }
 
-    public void move(float deltaX, float deltaY) {
-        float oldX = this.positionX;
-        float oldY = this.positionY;
-
-        // --- AXE X ---
-        this.positionX += deltaX;
-        this.bounds.x = this.positionX + hitboxOffsetX;
-
-        if (collisionSystem != null && collisionSystem.checkCollision(this.bounds)) {
-            this.positionX = oldX;
-            this.bounds.x = oldX + hitboxOffsetX;
-        }
-
-        // --- AXE Y ---
-        this.positionY += deltaY;
-        this.bounds.y = this.positionY + hitboxOffsetY;
-
-        if (collisionSystem != null && collisionSystem.checkCollision(this.bounds)) {
-            this.positionY = oldY;
-            this.bounds.y = oldY + hitboxOffsetY;
-        }
-
-        if (this.sprite != null) {
-            this.sprite.setPosition(this.positionX, this.positionY);
-        }
+    public void draw(SpriteBatch batch) {
+        sprite.draw(batch);
     }
 
-    // --- Getters & Setters indispensables pour Player ---
-    public Sprite getSprite() { return sprite; }
-    public Rectangle getBounds() { return bounds; }
+    // Getters / Setters inchangés...
     public float get_positionX() { return positionX; }
     public float get_positionY() { return positionY; }
+    public void set_position(float x, float y) {
+        this.positionX = x;
+        this.positionY = y;
+        this.sprite.setPosition(x, y);
+        updateBoxPosition();
+    }
     public float get_velocityX() { return velocityX; }
     public float get_velocityY() { return velocityY; }
     public void set_velocityX(float v) { this.velocityX = v; }
     public void set_velocityY(float v) { this.velocityY = v; }
-
-    public void set_position(float x, float y) {
-        this.positionX = x; this.positionY = y;
-        this.bounds.setPosition(x + hitboxOffsetX, y + hitboxOffsetY);
-        if (sprite != null) sprite.setPosition(x, y);
-    }
-
-    public void draw(SpriteBatch batch) {
-        if (this.sprite != null) this.sprite.draw(batch);
-    }
+    public Rectangle getBoundingBox() { return boundingBox; }
+    public Sprite getSprite() { return sprite; }
+    public int getDirection() { return currentDirection; }
 }
