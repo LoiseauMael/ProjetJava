@@ -1,0 +1,25 @@
+{
+playerClass: Wizard
+level: 1
+money: 150
+currentPV: 70
+currentPM: 80
+x: 17.55179
+y: 12.234099
+inventory: [
+	{
+		type: CONSUMABLE
+		name: Potion de Vie
+		description: Rend 20 PV
+		count: 1
+		bonus1: 20
+	}
+	{
+		type: CONSUMABLE
+		name: Ether
+		description: Rend 10 PM
+		count: 1
+		bonus1: 10
+	}
+]
+}
