@@ -5,311 +5,178 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-
-// Imports Items & Equipment
-import com.github.LoiseauMael.RPG.items.Item;
-import com.github.LoiseauMael.RPG.items.Equipment;
-import com.github.LoiseauMael.RPG.items.Weapon;
-import com.github.LoiseauMael.RPG.items.Armor;
-import com.github.LoiseauMael.RPG.items.Relic;
+import com.github.LoiseauMael.RPG.items.*;
 
 public abstract class Player extends Fighter implements Disposable {
-
-    private final Texture texture;
-
-    // 0=Bas, 1=Gauche, 2=Droite, 3=Haut
-    private int currentDirection = 0;
-
-    // Animations
-    private final Animation<TextureRegion> walkUp;
-    private final Animation<TextureRegion> walkDown;
-    private final Animation<TextureRegion> walkLeft;
-    private final Animation<TextureRegion> walkRight;
-    private final TextureRegion idleFront;
-    private final TextureRegion idleBack;
-    private final TextureRegion idleLeft;
-    private final TextureRegion idleRight;
-
-    private Animation<TextureRegion> currentAnimation;
-    private TextureRegion currentIdleFrame;
+    private Animation<TextureRegion> walkDown, walkLeft, walkRight, walkUp;
     private float stateTime;
+    private static final int FRAME_COLS = 3;
+    private static final int FRAME_ROWS = 4;
 
-    private static final float SPEED = 6f;
-    private static final int FRAME_WIDTH = 32;
-    private static final int FRAME_HEIGHT = 32;
+    protected Array<Item> inventory;
+    protected Weapon equippedWeapon;
+    protected Armor equippedArmor;
+    protected Relic equippedRelic;
 
-    // --- INVENTAIRE ---
-    private Array<Item> inventory;
+    // --- Contrôle des entrées ---
+    private boolean inputEnabled = true;
 
-    // --- EQUIPEMENT (Slots) ---
-    private Weapon equippedWeapon;
-    private Armor equippedArmor;
-    private Relic equippedRelic;
+    public Player(float x, float y, int PV, int PM, int PA, int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP, String texturePath) {
+        // MODIFICATION ICI : Le 3ème argument est passé à 1 (Niveau de départ)
+        super(x, y, 1, 0, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, new Sprite(new Texture(Gdx.files.internal(texturePath))));
 
-    protected Player(float positionX, float positionY, float velocityX, float velocityY,
-                     int PV, int PM, int PA, int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP,
-                     Sprite sprite, Texture texture) {
+        Texture t = this.getSprite().getTexture();
+        float widthInUnits = (t.getWidth() / (float)FRAME_COLS) / 16f;
+        float heightInUnits = (t.getHeight() / (float)FRAME_ROWS) / 16f;
+        this.getSprite().setSize(widthInUnits, heightInUnits);
 
-        super(positionX, positionY, velocityX, velocityY, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, sprite);
+        setCollisionBounds(0.5f, 0.3f, 0f, 0.1f);
 
-        this.texture = texture;
+        initAnimations();
         this.inventory = new Array<>();
-
-        // --- ANIMATIONS ---
-        TextureRegion[][] tmp = TextureRegion.split(this.texture, FRAME_WIDTH, FRAME_HEIGHT);
-
-        Array<TextureRegion> downFrames = new Array<>();
-        if (tmp.length > 0) for (int i = 0; i < tmp[0].length; i++) downFrames.add(tmp[0][i]);
-        this.walkDown = new Animation<>(0.1f, downFrames, Animation.PlayMode.LOOP);
-
-        Array<TextureRegion> leftFrames = new Array<>();
-        if (tmp.length > 1) for (int i = 0; i < tmp[1].length; i++) leftFrames.add(tmp[1][i]);
-        this.walkLeft = new Animation<>(0.1f, leftFrames, Animation.PlayMode.LOOP);
-
-        Array<TextureRegion> rightFrames = new Array<>();
-        if (tmp.length > 2) for (int i = 0; i < tmp[2].length; i++) rightFrames.add(tmp[2][i]);
-        this.walkRight = new Animation<>(0.1f, rightFrames, Animation.PlayMode.LOOP);
-
-        Array<TextureRegion> upFrames = new Array<>();
-        if (tmp.length > 3) for (int i = 0; i < tmp[3].length; i++) upFrames.add(tmp[3][i]);
-        this.walkUp = new Animation<>(0.1f, upFrames, Animation.PlayMode.LOOP);
-
-        this.idleFront = tmp.length > 0 && tmp[0].length > 1 ? tmp[0][1] : tmp[0][0];
-        this.idleLeft  = tmp.length > 1 && tmp[1].length > 1 ? tmp[1][1] : tmp[0][0];
-        this.idleRight = tmp.length > 2 && tmp[2].length > 1 ? tmp[2][1] : tmp[0][0];
-        this.idleBack  = tmp.length > 3 && tmp[3].length > 1 ? tmp[3][1] : tmp[0][0];
-
-        currentAnimation = walkDown;
-        currentIdleFrame = idleFront;
-        this.getSprite().setRegion(currentIdleFrame);
     }
 
-    @Override
-    public void update(float delta) {
-        stateTime += delta;
-        move(get_velocityX() * delta, get_velocityY() * delta);
-
-        // Gestion Animation Déplacement
-        float vx = get_velocityX();
-        float vy = get_velocityY();
-        boolean isMoving = Math.abs(vx) > 0.01f || Math.abs(vy) > 0.01f;
-
-        if (isMoving) {
-            Animation<TextureRegion> nextAnimation;
-            if (Math.abs(vx) > Math.abs(vy)) {
-                if (vx > 0) {
-                    nextAnimation = walkRight; currentIdleFrame = idleRight; currentDirection = 2;
-                } else {
-                    nextAnimation = walkLeft; currentIdleFrame = idleLeft; currentDirection = 1;
-                }
-            } else {
-                if (vy > 0) {
-                    nextAnimation = walkUp; currentIdleFrame = idleBack; currentDirection = 3;
-                } else {
-                    nextAnimation = walkDown; currentIdleFrame = idleFront; currentDirection = 0;
-                }
-            }
-
-            if (currentAnimation != nextAnimation) {
-                currentAnimation = nextAnimation;
-                stateTime = 0f;
-            }
-            this.getSprite().setRegion(currentAnimation.getKeyFrame(stateTime, true));
-        } else {
-            currentAnimation = null;
-            this.getSprite().setRegion(currentIdleFrame);
+    // --- GESTION INPUT ---
+    public void setInputEnabled(boolean enabled) {
+        this.inputEnabled = enabled;
+        if (!enabled) {
+            // Stop net le mouvement si on désactive les inputs
+            this.velocityX = 0;
+            this.velocityY = 0;
         }
     }
 
     public void handleInput() {
-        set_velocityX(0);
-        set_velocityY(0);
+        // Si les inputs sont désactivés (Combat), on ne fait rien
+        if (!inputEnabled) {
+            this.velocityX = 0;
+            this.velocityY = 0;
+            return;
+        }
 
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) set_velocityY(SPEED);
-        else if (Gdx.input.isKeyPressed(Input.Keys.S)) set_velocityY(-SPEED);
+        // Sinon (Exploration), comportement normal
+        this.velocityX = 0;
+        this.velocityY = 0;
+        float speed = 4.0f;
 
-        if (get_velocityY() == 0) {
-            if (Gdx.input.isKeyPressed(Input.Keys.A)) set_velocityX(-SPEED);
-            else if (Gdx.input.isKeyPressed(Input.Keys.D)) set_velocityX(SPEED);
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.A)) {
+            this.velocityX = -speed;
+            setDirection(1);
+        }
+        else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT) || Gdx.input.isKeyPressed(Input.Keys.D)) {
+            this.velocityX = speed;
+            setDirection(2);
+        }
+        else if (Gdx.input.isKeyPressed(Input.Keys.UP) || Gdx.input.isKeyPressed(Input.Keys.W)) {
+            this.velocityY = speed;
+            setDirection(3);
+        }
+        else if (Gdx.input.isKeyPressed(Input.Keys.DOWN) || Gdx.input.isKeyPressed(Input.Keys.S)) {
+            this.velocityY = -speed;
+            setDirection(0);
         }
     }
 
-    // ==========================================
-    // GESTION EQUIPEMENT & STATS
-    // ==========================================
+    // --- GESTION OBJETS ---
 
-    public String equip(Equipment item) {
-        if (!item.canEquip(this)) {
-            return "Impossible : Classe invalide !";
+    public void addItem(Item item) {
+        for (Item i : inventory) {
+            if (i.getName().equals(item.getName())) {
+                i.addCount(1);
+                return;
+            }
         }
+        inventory.add(item);
+    }
 
-        Equipment oldItem = null;
+    public void consumeItem(Item item) {
+        if (item.use(this)) {
+            item.removeCount(1);
+            if (item.getCount() <= 0) {
+                inventory.removeValue(item, true);
+            }
+        }
+    }
 
+    public void equip(Equipment item) {
         if (item instanceof Weapon) {
-            oldItem = equippedWeapon;
+            if (equippedWeapon != null) unequip(equippedWeapon);
             equippedWeapon = (Weapon) item;
-        }
-        else if (item instanceof Armor) {
-            oldItem = equippedArmor;
+        } else if (item instanceof Armor) {
+            if (equippedArmor != null) unequip(equippedArmor);
             equippedArmor = (Armor) item;
-        }
-        else if (item instanceof Relic) {
-            oldItem = equippedRelic;
+        } else if (item instanceof Relic) {
+            if (equippedRelic != null) unequip(equippedRelic);
             equippedRelic = (Relic) item;
         }
-
-        if (oldItem != null) {
-            addItem(oldItem);
-        }
-
-        if (item.getCount() > 1) {
-            item.addCount(-1);
-        } else {
-            inventory.removeValue(item, true);
-        }
-
-        return "Equipé : " + item.getName();
+        applyEquipmentStats(item, true);
+        System.out.println("Équipé : " + item.getName());
     }
 
     public void unequip(Equipment item) {
+        applyEquipmentStats(item, false);
         if (item == equippedWeapon) equippedWeapon = null;
         else if (item == equippedArmor) equippedArmor = null;
         else if (item == equippedRelic) equippedRelic = null;
+    }
 
-        addItem(item);
+    private void applyEquipmentStats(Equipment item, boolean isEquipping) {
+        int factor = isEquipping ? 1 : -1;
+        if (item instanceof Weapon) {
+            Weapon w = (Weapon) item;
+            this.FOR += w.bonusFOR * factor;
+            this.FORM += w.bonusFORM * factor;
+        } else if (item instanceof Armor) {
+            Armor a = (Armor) item;
+            this.DEF += a.bonusDEF * factor;
+            this.DEFM += a.bonusDEFM * factor;
+        }
     }
 
     public Weapon getEquippedWeapon() { return equippedWeapon; }
     public Armor getEquippedArmor() { return equippedArmor; }
     public Relic getEquippedRelic() { return equippedRelic; }
-
-    @Override
-    public int getFOR() {
-        int total = super.FOR;
-        if (equippedWeapon != null) total += equippedWeapon.bonusFOR;
-        return total;
-    }
-
-    @Override
-    public int getFORM() {
-        int total = super.FORM;
-        if (equippedWeapon != null) total += equippedWeapon.bonusFORM;
-        return total;
-    }
-
-    @Override
-    public int getDEF() {
-        int total = super.DEF;
-        if (equippedArmor != null) total += equippedArmor.bonusDEF;
-        return total;
-    }
-
-    @Override
-    public int getDEFM() {
-        int total = super.DEFM;
-        if (equippedArmor != null) total += equippedArmor.bonusDEFM;
-        return total;
-    }
-
-    public float getDamageMultiplier() {
-        return (equippedRelic != null) ? equippedRelic.damageMultiplier : 1.0f;
-    }
-
-    public float getDefenseMultiplier() {
-        return (equippedRelic != null) ? equippedRelic.defenseMultiplier : 1.0f;
-    }
-
-    // ==========================================
-    // GESTION XP / NIVEAUX / SETTERS POUR SAUVEGARDE
-    // ==========================================
-
-    public int getMaxExp() { return level * 100; }
-
-    public void gainExp(int amount) {
-        this.exp += amount;
-        while (this.exp >= getMaxExp()) {
-            this.exp -= getMaxExp();
-            levelUp();
-        }
-    }
-
-    private int getStatIncrease(int currentStatValue) {
-        int increase = (int) (currentStatValue * 0.10f);
-        return Math.max(1, increase);
-    }
-
-    private void levelUp() {
-        this.level++;
-        this.maxPV += getStatIncrease(this.maxPV); this.PV = this.maxPV;
-        this.maxPM += getStatIncrease(this.maxPM); this.PM = this.maxPM;
-        this.FOR += getStatIncrease(this.FOR);
-        this.DEF += getStatIncrease(this.DEF);
-        this.FORM += getStatIncrease(this.FORM);
-        this.DEFM += getStatIncrease(this.DEFM);
-        this.VIT += getStatIncrease(this.VIT);
-        if (this.maxPA > 0) { this.maxPA += getStatIncrease(this.maxPA); this.PA = this.maxPA; }
-        Gdx.app.log("Player", "NIVEAU UP ! Niveau " + level);
-    }
-
-    // --- SETTERS POUR LE CHARGEMENT (LOAD) ---
-    public void setLevel(int level) { this.level = level; }
-    public void setExp(int exp) { this.exp = exp; }
-    public void setMoney(int money) { this.money = money; } // Pour écraser l'or
-    // Les PV/PM sont déjà gérés par setPV/setPM dans Fighter
-
-    // ==========================================
-    // INVENTAIRE
-    // ==========================================
-
-    public void addItem(Item newItem) {
-        for (Item item : inventory) {
-            if (item.getName().equals(newItem.getName())) {
-                item.addCount(1);
-                return;
-            }
-        }
-        inventory.add(newItem);
-    }
-
-    public void consumeItem(Item item) {
-        item.use(this);
-        if (item.getCount() <= 0) inventory.removeValue(item, true);
-    }
-
     public Array<Item> getInventory() { return inventory; }
 
-    // ==========================================
-    // RENDU & HELPERS
-    // ==========================================
+    @Override
+    public void update(float delta) {
+        handleInput();
+        super.update(delta);
+        updateAnimation(delta);
+    }
+
+    protected void updateAnimation(float delta) {
+        stateTime += delta;
+        boolean isMoving = (velocityX != 0 || velocityY != 0);
+        TextureRegion currentFrame;
+        switch (getDirection()) {
+            case 1: currentFrame = isMoving ? walkLeft.getKeyFrame(stateTime, true) : walkLeft.getKeyFrames()[1]; break;
+            case 2: currentFrame = isMoving ? walkRight.getKeyFrame(stateTime, true) : walkRight.getKeyFrames()[1]; break;
+            case 3: currentFrame = isMoving ? walkUp.getKeyFrame(stateTime, true) : walkUp.getKeyFrames()[1]; break;
+            default: currentFrame = isMoving ? walkDown.getKeyFrame(stateTime, true) : walkDown.getKeyFrames()[1]; break;
+        }
+        this.getSprite().setRegion(currentFrame);
+    }
 
     @Override
-    public void draw(SpriteBatch batch) {
-        super.draw(batch);
+    protected void updateSpriteRegion() {
+        updateAnimation(0);
+    }
+
+    private void initAnimations() {
+        Texture texture = this.getSprite().getTexture();
+        TextureRegion[][] tmp = TextureRegion.split(texture, texture.getWidth() / FRAME_COLS, texture.getHeight() / FRAME_ROWS);
+        walkDown = new Animation<>(0.2f, tmp[0]);
+        walkLeft = new Animation<>(0.2f, tmp[1]);
+        walkRight = new Animation<>(0.2f, tmp[2]);
+        walkUp = new Animation<>(0.2f, tmp[3]);
     }
 
     @Override
     public void dispose() {
-        if (this.texture != null) this.texture.dispose();
+        if (getSprite() != null) getSprite().getTexture().dispose();
     }
-
-    public int getDirection() { return currentDirection; }
-
-    public void setDirection(int direction) {
-        this.currentDirection = direction;
-        switch (direction) {
-            case 1: this.currentIdleFrame = idleLeft; break;
-            case 2: this.currentIdleFrame = idleRight; break;
-            case 3: this.currentIdleFrame = idleBack; break;
-            case 0: default: this.currentIdleFrame = idleFront; break;
-        }
-        this.getSprite().setRegion(currentIdleFrame);
-    }
-
-    public int getMaxPV() { return maxPV; }
-    public int getMaxPM() { return maxPM; }
-    public int getMaxPA() { return maxPA; }
 }

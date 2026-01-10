@@ -1,50 +1,39 @@
 package com.github.LoiseauMael.RPG;
 
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.utils.Disposable;
 
-public abstract class Fighter extends Entity {
+/**
+ * Classe de base pour toutes les entités capables de combattre (Joueur et Ennemis).
+ * Gère les statistiques, les ressources et la progression.
+ */
+public abstract class Fighter extends Entity implements Disposable {
 
-    // Stats de base (Points de Vie, Mana, Action)
-    protected int maxPV;
-    protected int PV;
-    protected int maxPM;
-    protected int PM;
-    protected int maxPA;
-    protected int PA;
+    // --- STATISTIQUES DE RESSOURCES ---
+    protected int maxPV, PV;
+    protected int maxPM, PM; // Mana (utilisé pour les Sorts)
+    protected int maxPA, PA; // Points d'Action / Énergie (utilisé pour les Arts/Déplacements)
 
-    // Attributs de combat
-    protected int FOR;  // Force Physique
-    protected int DEF;  // Défense Physique
-    protected int FORM; // Force Magique
-    protected int DEFM; // Défense Magique
-    protected int VIT;  // Vitesse (Initiative)
-    protected int DEP;  // Déplacement (Cases)
+    // --- STATISTIQUES DE COMBAT ---
+    protected int FOR, DEF, FORM, DEFM, VIT;
+    protected int DEP; // Capacité de déplacement (nombre de cases en combat tactique)
 
-    // Progression
-    protected int level;
-    protected int exp;
+    // --- PROGRESSION & IDENTITÉ ---
     protected int money;
+    protected int exp;
+    protected int level;
+    protected String nom;
 
-    /**
-     * Constructeur complet utilisé par Player et Enemy.
-     */
-    public Fighter(float positionX, float positionY, float velocityX, float velocityY,
-                   int PV, int PM, int PA, int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP,
-                   Sprite sprite) {
+    public Fighter(float x, float y, int level, int exp, int PV, int PM, int PA,
+                   int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP, Sprite sprite) {
+        super(x, y, sprite);
 
-        super(positionX, positionY, sprite);
+        this.level = level;
+        this.exp = exp;
 
-        // Initialisation Physique
-        this.set_velocityX(velocityX);
-        this.set_velocityY(velocityY);
-
-        // Initialisation Stats
-        this.maxPV = PV;
-        this.PV = PV;
-        this.maxPM = PM;
-        this.PM = PM;
-        this.maxPA = PA;
-        this.PA = PA;
+        this.maxPV = PV; this.PV = PV;
+        this.maxPM = PM; this.PM = PM;
+        this.maxPA = PA; this.PA = PA;
 
         this.FOR = FOR;
         this.DEF = DEF;
@@ -52,102 +41,118 @@ public abstract class Fighter extends Entity {
         this.DEFM = DEFM;
         this.VIT = VIT;
         this.DEP = DEP;
-
-        // Valeurs par défaut
-        this.level = 1;
-        this.exp = 0;
-        this.money = 0;
     }
 
-    // ==========================================
-    // COMBAT (Dégâts)
-    // ==========================================
+    // --- GESTION DES POINTS DE VIE (PV) ---
+    public void heal(int amount) {
+        this.PV = Math.min(this.maxPV, this.PV + amount);
+    }
 
-    /**
-     * Applique des dégâts directs au combattant.
-     * Note : La réduction par la défense (DEF) est généralement calculée
-     * dans l'objet BattleAction avant d'appeler cette méthode,
-     * ou vous pouvez l'intégrer ici si vous préférez.
-     */
     public void takeDamage(int amount) {
         this.PV -= amount;
-        if (this.PV < 0) {
-            this.PV = 0;
+        if (this.PV < 0) this.PV = 0;
+    }
+
+    // --- GESTION DU MANA (PM) ---
+    public void regenPM(int amount) {
+        this.PM = Math.min(this.maxPM, this.PM + amount);
+    }
+
+    public void consumePM(int amount) {
+        this.PM = Math.max(0, this.PM - amount);
+    }
+
+    // --- GESTION DE L'ÉNERGIE / PA ---
+    public void regenPA(int amount) {
+        this.PA = Math.min(this.maxPA, this.PA + amount);
+    }
+
+    public void consumePA(int amount) {
+        this.PA = Math.max(0, this.PA - amount);
+    }
+
+    // --- GESTION DE L'ARGENT ---
+    public void addMoney(int amount) {
+        this.money += amount;
+    }
+
+    // --- GESTION DE L'EXPÉRIENCE ET DES NIVEAUX (NOUVEAU) ---
+
+    /**
+     * Ajoute de l'expérience et gère la montée de niveau si nécessaire.
+     */
+    public void gainExp(int amount) {
+        this.exp += amount;
+
+        // On vérifie si on a assez d'XP pour monter de niveau (boucle while pour multi-level)
+        while (this.exp >= getExpForNextLevel()) {
+            this.exp -= getExpForNextLevel();
+            levelUp();
         }
     }
 
-    // ==========================================
-    // GESTION SOIN & RESTAURATION
-    // ==========================================
-
-    public void heal(int amount) {
-        this.PV += amount;
-        if (this.PV > this.maxPV) this.PV = this.maxPV;
+    /**
+     * Formule d'XP requise : 100 * Niveau actuel
+     */
+    public int getExpForNextLevel() {
+        return 100 * level;
     }
 
-    public void restoreMana(int amount) {
-        this.PM += amount;
-        if (this.PM > this.maxPM) this.PM = this.maxPM;
+    protected void levelUp() {
+        this.level++;
+
+        // Bonus de stats basiques à chaque niveau
+        this.maxPV += 10;
+        this.maxPM += 5;
+        this.FOR += 2;
+        this.DEF += 1;
+        this.VIT += 1;
+
+        // Restauration complète (récompense)
+        this.PV = this.maxPV;
+        this.PM = this.maxPM;
+
+        System.out.println(this.nom + " passe au niveau " + this.level + " !");
     }
 
-    public void restorePA(int amount) {
-        this.PA += amount;
-        if (this.PA > this.maxPA) this.PA = this.maxPA;
-    }
-
-    // ==========================================
-    // GETTERS & SETTERS
-    // ==========================================
-
-    // --- PV ---
+    // --- GETTERS ---
     public int getPV() { return PV; }
-    public void setPV(int pv) {
-        this.PV = pv;
-        if (this.PV > maxPV) this.PV = maxPV;
-        if (this.PV < 0) this.PV = 0;
-    }
     public int getMaxPV() { return maxPV; }
-
-    // --- PM ---
     public int getPM() { return PM; }
-    public void setPM(int pm) {
-        this.PM = pm;
-        if (this.PM > maxPM) this.PM = maxPM;
-        if (this.PM < 0) this.PM = 0;
-    }
     public int getMaxPM() { return maxPM; }
-
-    // --- PA ---
     public int getPA() { return PA; }
-
-    // Setter PA (Correction de l'erreur précédente)
-    public void setPA(int pa) {
-        this.PA = pa;
-        if (this.PA > maxPA) this.PA = maxPA;
-        if (this.PA < 0) this.PA = 0;
-    }
-
     public int getMaxPA() { return maxPA; }
-
-    public abstract void update(float delta);
-
-    // --- STATS COMBAT ---
-    // Ces getters sont surchargés dans Player pour inclure les bonus d'équipement
     public int getFOR() { return FOR; }
     public int getDEF() { return DEF; }
     public int getFORM() { return FORM; }
     public int getDEFM() { return DEFM; }
     public int getVIT() { return VIT; }
     public int getDEP() { return DEP; }
-
-    // --- PROGRESSION ---
     public int getLevel() { return level; }
-    public void setLevel(int level) { this.level = level; }
-
     public int getExp() { return exp; }
-    public void setExp(int exp) { this.exp = exp; }
-
     public int getMoney() { return money; }
-    public void addMoney(int amount) { this.money += amount; }
+    public String getName() { return nom; }
+
+    // --- SETTERS ---
+    public void setPV(int pv) { this.PV = Math.min(pv, maxPV); }
+    public void setPM(int pm) { this.PM = Math.min(pm, maxPM); }
+    public void setPA(int pa) { this.PA = Math.min(pa, maxPA); }
+    public void setLevel(int level) { this.level = level; }
+    public void setExp(int exp) { this.exp = exp; }
     public void setMoney(int money) { this.money = money; }
+
+    public void setStats(int FOR, int DEF, int FORM, int DEFM, int VIT) {
+        this.FOR = FOR;
+        this.DEF = DEF;
+        this.FORM = FORM;
+        this.DEFM = DEFM;
+        this.VIT = VIT;
+    }
+
+    @Override
+    public void dispose() {
+        if (getSprite() != null && getSprite().getTexture() != null) {
+            getSprite().getTexture().dispose();
+        }
+    }
 }

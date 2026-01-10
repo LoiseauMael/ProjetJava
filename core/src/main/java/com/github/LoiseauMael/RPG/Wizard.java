@@ -1,27 +1,30 @@
 package com.github.LoiseauMael.RPG;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-
 public class Wizard extends Player {
 
-    private Wizard(float x, float y, Sprite sprite, Texture texture) {
-        // PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP
-        // Stats Mage : Moins de PV (70), Plus de PM (80), Faible FOR (4), Forte FORM (15)
-        super(x, y, 0, 0, 70, 80, 6, 4, 3, 15, 10, 8, 4, sprite, texture);
+    public Wizard(float x, float y) {
+        // x, y, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, CheminTexture
+        super(x, y,
+            70,  // PV (Fragile)
+            50,  // PM (Beaucoup de mana)
+            6,   // PA
+            4,   // FOR (Faible physique)
+            3,   // DEF
+            15,  // FORM (Puissant magie)
+            10,  // DEFM
+            6,   // VIT
+            4,   // DEP
+            "WizardSpriteSheet.png" // Assurez-vous que ce fichier existe
+        );
+
+        this.nom = "Mage";
+
+        // Le mage commence avec un sort
+        // Note: Assurez-vous d'avoir SpellAction importé ou disponible
+        // this.spells.add(new SpellAction("Boule de Feu", 10, 20));
     }
 
     public static Wizard create(float x, float y) {
-        // Chargement de la texture spécifique au mage
-        Texture texture = new Texture(Gdx.files.internal("WizardSpriteSheet.png"));
-        Sprite sprite = new Sprite(texture);
-
-        // --- CORRECTION TAILLE ---
-        // Le sprite fait 32 pixels. L'échelle du monde est 1 unité = 16 pixels.
-        // Donc la taille doit être 32 / 16 = 2.0f unités.
-        sprite.setSize(2.0f, 2.0f);
-
-        return new Wizard(x, y, sprite, texture);
+        return new Wizard(x, y);
     }
 }

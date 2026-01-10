@@ -3,30 +3,35 @@ package com.github.LoiseauMael.RPG;
 import com.github.LoiseauMael.RPG.battle.AttackAction;
 
 public class Goblin extends Enemy {
+    public Goblin(float x, float y, int level, int id) {
+        super(x, y, level, 15 * level, 20 + (level * 5), 0, 10, 5 + level, 2 + level, 2, 2, 3, 3, "GoblinSpriteSheet.png");
+        this.id = id;
+        this.nom = "Gobelin";
 
-    public Goblin(float x, float y, int level) {
-        // On passe des 0 au super constructeur car on va tout recalculer avec initStats
-        super(x, y, 0, 0, 0, 0, 0, 0, 0, 0, 0, "GoblinSpriteSheet.png");
+        // TAILLE AUGMENTÉE : 2.0 unités
+        if (this.sprite != null) {
+            this.sprite.setSize(2.0f, 2.0f);
+        }
 
-        // Stats de BASE (Niveau 1)
-        int bPV = 40;
-        int bPM = 10;
-        int bPA = 6;
-        int bFOR = 10;  // Force correcte
-        int bDEF = 3;   // Peu d'armure
-        int bFORM = 0;  // Pas de magie
-        int bDEFM = 2;
-        int bVIT = 6;   // Assez rapide
-        int bDEP = 4;
-
-        // Calcul automatique selon le niveau demandé
-        initStats(level, bPV, bPM, bPA, bFOR, bDEF, bFORM, bDEFM, bVIT, bDEP);
+        // Hitbox ajustée
+        this.setCollisionBounds(1.2f, 0.6f, 0.4f, 0f);
+        this.moveSpeed = 1.1f;
     }
 
     @Override
     protected void setupMoves() {
-        this.availableMoves.clear();
-        // Le gobelin fait principalement des attaques de base
-        this.availableMoves.add(new EnemyMove(new AttackAction(), 100));
+        // Le gobelin a juste une attaque de base (Portée 1 case)
+        // 100% de chance d'utiliser cette attaque si possible
+        this.availableMoves.add(new EnemyMove(new AttackAction("Coup de dague", "Une attaque sournoise.", 1.0f), 100));
+    }
+
+    @Override
+    public void update(float delta) {
+        super.update(delta);
+        // Centrage visuel constant
+        if (sprite != null) {
+            float visualX = positionX - (sprite.getWidth() / 2f) + (collisionWidth / 2f);
+            sprite.setPosition(visualX, positionY);
+        }
     }
 }

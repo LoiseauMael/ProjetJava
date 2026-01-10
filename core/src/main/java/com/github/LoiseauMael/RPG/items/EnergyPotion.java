@@ -1,24 +1,33 @@
 package com.github.LoiseauMael.RPG.items;
 
-import com.github.LoiseauMael.RPG.Fighter;
+import com.github.LoiseauMael.RPG.Player;
 
 public class EnergyPotion extends Item {
-    private int energyAmount;
 
-    public EnergyPotion(String name, String description, int energyAmount) {
+    private int amount;
+
+    public EnergyPotion(String name, String description, int amount) {
         super(name, description);
-        this.energyAmount = energyAmount;
-        this.count = 1;
+        this.amount = amount;
     }
 
     @Override
-    public void use(Fighter target) {
-        // CORRECTION ICI : On appelle la nouvelle méthode créée dans Fighter
-        target.restorePA(energyAmount);
-        this.count--;
+    public boolean use(Player player) {
+        // On vérifie si le joueur a besoin d'énergie (PA)
+        if (player.getPA() < player.getMaxPA()) {
+
+            // CORRECTION ICI : On utilise la nouvelle méthode regenPA()
+            player.regenPA(amount);
+
+            System.out.println("Vous utilisez " + getName() + " et recuperez " + amount + " PA.");
+            return true; // L'objet est consommé
+        }
+
+        System.out.println("Energie (PA) deja au max !");
+        return false; // L'objet n'est pas consommé
     }
 
     public int getAmount() {
-        return energyAmount;
+        return amount;
     }
 }

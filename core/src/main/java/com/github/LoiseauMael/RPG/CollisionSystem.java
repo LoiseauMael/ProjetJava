@@ -3,50 +3,50 @@ package com.github.LoiseauMael.RPG;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
+import com.github.LoiseauMael.RPG.npcs.NPC;
 
 public class CollisionSystem {
-
-    private TiledMapTileLayer collisionLayer;
+    private TiledMap map;
+    private Array<NPC> npcs;
 
     public CollisionSystem(TiledMap map) {
-        // On récupère le calque nommé "Collision" dans votre fichier .tmx
-        // ATTENTION : Le nom doit être exact (majuscule/minuscule)
-        this.collisionLayer = (TiledMapTileLayer) map.getLayers().get("Collision");
+        this.map = map;
+        this.npcs = new Array<>();
     }
 
-    /**
-     * Vérifie si le rectangle donné touche une tuile du calque de collision.
-     * @param box La boîte de collision de l'entité (en unités du monde)
-     * @return true si collision (mur), false sinon (passage libre)
-     */
+    public void setNpcs(Array<NPC> npcs) { this.npcs = npcs; }
+
     public boolean isColliding(Rectangle box) {
-        // Si le calque n'existe pas (ex: map sans murs), on ne bloque rien
-        if (collisionLayer == null) return false;
+        TiledMapTileLayer collisionLayer = (TiledMapTileLayer) map.getLayers().get("Collisions");
 
-        // On convertit les coordonnées du monde (float) en coordonnées de grille (int)
-        // Comme 1 unité = 1 tuile, un simple cast (int) suffit.
+        if (collisionLayer != null) {
+            // On teste les points clés de la boîte centrée
+            float[][] points = {
+                {box.x, box.y},                               // Bas-Gauche
+                {box.x + box.width, box.y},                  // Bas-Droite
+                {box.x, box.y + box.height},                 // Haut-Gauche
+                {box.x + box.width, box.y + box.height},    // Haut-Droite
+                {box.x + box.width / 2f, box.y}              // CENTRE BAS (entre les pieds)
+            };
 
-        int minX = (int) box.x;
-        int maxX = (int) (box.x + box.width - 0.01f); // -0.01 pour ne pas bloquer si on touche juste le bord de la tuile suivante
-        int minY = (int) box.y;
-        int maxY = (int) (box.y + box.height - 0.01f);
-
-        // On boucle sur toutes les tuiles touchées par le rectangle
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-
-                // On récupère la cellule à cette position (x, y)
-                TiledMapTileLayer.Cell cell = collisionLayer.getCell(x, y);
-
-                // Si la cellule existe (c'est-à-dire qu'il y a une tuile peinte sur le calque Collision),
-                // alors c'est un obstacle.
-                if (cell != null) {
-                    return true;
-                }
+            for (float[] pt : points) {
+                if (checkTileCollision(pt[0], pt[1], collisionLayer)) return true;
             }
         }
 
-        // Aucune tuile trouvée sous le rectangle -> c'est libre
+        if (npcs != null) {
+            for (NPC npc : npcs) {
+                Rectangle npcBox = npc.getBoundingBox();
+                // box != npcBox évite que l'entité ne se bloque elle-même
+                if (box.overlaps(npcBox) && box != npcBox) return true;
+            }
+        }
         return false;
+    }
+
+    private boolean checkTileCollision(float x, float y, TiledMapTileLayer layer) {
+        TiledMapTileLayer.Cell cell = layer.getCell((int)x, (int)y);
+        return cell != null && cell.getTile() != null;
     }
 }

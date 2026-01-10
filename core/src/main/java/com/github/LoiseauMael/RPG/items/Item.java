@@ -1,9 +1,8 @@
 package com.github.LoiseauMael.RPG.items;
 
-import com.github.LoiseauMael.RPG.Fighter;
+import com.github.LoiseauMael.RPG.Player;
 
 public abstract class Item {
-
     protected String name;
     protected String description;
     protected int count;
@@ -11,31 +10,21 @@ public abstract class Item {
     public Item(String name, String description) {
         this.name = name;
         this.description = description;
-        this.count = 1; // Par défaut, on en a 1
+        this.count = 1;
     }
 
-    /**
-     * Méthode abstraite définissant l'effet de l'objet.
-     */
-    public abstract void use(Fighter target);
+    public abstract boolean use(Player player);
 
-    public void addCount(int amount) {
-        this.count += amount;
-    }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
 
-    // --- C'EST LA MÉTHODE QUI MANQUAIT ---
+    public int getCount() { return count; }
+
+    // --- AJOUT : La méthode manquante ---
     public void setCount(int count) {
         this.count = count;
     }
 
-    // --- GETTERS ---
-    public int getCount() { return count; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-
-    // Utile pour le debug ou l'affichage simple
-    @Override
-    public String toString() {
-        return name + " x" + count;
-    }
+    public void addCount(int n) { this.count += n; }
+    public void removeCount(int n) { this.count -= n; }
 }

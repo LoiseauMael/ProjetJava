@@ -5,19 +5,23 @@
     },
     "activeFile": "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
     "expandedProjectPaths": [
-        ".",
         "map",
-        "tuiles"
+        "tuiles",
+        "."
     ],
     "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
     "fileStates": {
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx": {
-            "scale": 2.1978,
-            "selectedLayer": 2,
+            "scale": 1.5,
+            "selectedLayer": 10,
             "viewCenter": {
-                "x": 219.31021931021928,
-                "y": 230.6852306852307
+                "x": 328,
+                "y": 186.66666666666663
             }
+        },
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/tuiles/exterior.tsx": {
             "scaleInDock": 1
@@ -116,16 +120,18 @@
         }
     },
     "last.externalTilesetPath": "/home/loiseaumael/Bureau/PCOO/JRPG/tiled/tuiles",
-    "last.imagePath": "/home/loiseaumael/Bureau/PCOO/JRPG/tiled/ressources",
+    "last.imagePath": "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/ressources",
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "openFiles": [
-        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx"
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx"
     ],
     "project": "test.tiled-project",
-    "property.type": "bool",
+    "property.type": "string",
     "recentFiles": [
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx",
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
         "map/map.tmx",
         "map/exterior.tsx",

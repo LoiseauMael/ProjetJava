@@ -1,129 +1,248 @@
 package com.github.LoiseauMael.RPG.battle;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
 import com.github.LoiseauMael.RPG.Enemy;
+import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.Player;
 
 public class BattleSystem {
 
     public enum BattleState {
-        WAITING,                // Remplissage des barres ATB
-        PLAYER_TURN,            // Le joueur doit choisir une action
-        PLAYER_MOVING,          // Le joueur choisit où se déplacer
-        PLAYER_SELECTING_TARGET,// Le joueur choisit la cible de son attaque
-        ENEMY_TURN,             // L'ennemi réfléchit et agit
+        WAITING,
+        PLAYER_TURN,
+        PLAYER_MOVING,
+        PLAYER_SELECTING_TARGET,
+        ENEMY_TURN,
         VICTORY,
         GAME_OVER
     }
 
+    private Main game;
     private Player player;
     private Enemy enemy;
     private BattleState state;
 
-    // ATB (Active Time Battle) : 0 à 100
     private float playerATB;
     private float enemyATB;
 
-    // Logique du tour
     private boolean hasMoved;
-    private BattleAction pendingAction; // L'action que le joueur (ou l'ennemi) veut faire
-    private float turnTimer; // Pour donner un délai visuel à l'IA
+    private BattleAction pendingAction;
+    private float turnTimer;
+    private boolean rewardsGiven = false;
 
-    // --- SYSTEME DE LOGS (Static pour être accessible depuis les Actions) ---
+    // UI Elements
     private static Array<String> combatLogs = new Array<>();
+    private ScrollPane logScroll;
+    private Table logTable;
+    private Skin skin;
 
-    public BattleSystem(Player player, Enemy enemy) {
+    public BattleSystem(Main game, Player player, Enemy enemy) {
+        this.game = game;
         this.player = player;
         this.enemy = enemy;
         this.state = BattleState.WAITING;
-        this.playerATB = 0;
-        this.enemyATB = 0;
-        this.hasMoved = false;
+        this.rewardsGiven = false;
 
-        // On vide les logs au début d'un nouveau combat
+        initUI();
+
         combatLogs.clear();
-        addLog("Le combat commence !");
+        addLog("Combat commencé contre " + enemy.getName() + " !");
+
+        // Alignement initial sur la grille
+        player.snapToGrid();
+        enemy.snapToGrid();
     }
 
-    /**
-     * Ajoute un message au journal de combat (Visible Console + UI).
-     */
-    public static void addLog(String message) {
-        Gdx.app.log("COMBAT", message); // Console
-        combatLogs.add("> " + message); // UI
+    private void initUI() {
+        skin = new Skin();
 
-        // On garde seulement les 6 derniers messages
-        if (combatLogs.size > 6) {
-            combatLogs.removeIndex(0);
+        // Ajout police et styles
+        skin.add("default", new BitmapFont());
+
+        Label.LabelStyle labelStyle = new Label.LabelStyle();
+        labelStyle.font = skin.getFont("default");
+        labelStyle.fontColor = Color.WHITE;
+        skin.add("default", labelStyle);
+
+        // Style nécessaire pour le ScrollPane
+        ScrollPane.ScrollPaneStyle scrollStyle = new ScrollPane.ScrollPaneStyle();
+        skin.add("default", scrollStyle);
+
+        logTable = new Table();
+        logTable.top().left();
+
+        logScroll = new ScrollPane(logTable, skin);
+        logScroll.setFadeScrollBars(false);
+    }
+
+    public static void addLog(String message) {
+        Gdx.app.log("COMBAT", message);
+        combatLogs.add("> " + message);
+        if (combatLogs.size > 20) combatLogs.removeIndex(0);
+    }
+
+    private void updateLogUI() {
+        if (logTable == null) return;
+        logTable.clear();
+        for (String log : combatLogs) {
+            Label l = new Label(log, skin);
+            logTable.add(l).left().row();
+        }
+        if (logScroll != null) {
+            logScroll.layout();
+            logScroll.setScrollPercentY(100);
         }
     }
 
-    public static Array<String> getLogs() {
-        return combatLogs;
+    public ScrollPane getLogScroll() {
+        return logScroll;
     }
 
     public void update(float delta) {
-        // 1. Vérification des conditions de fin
+        updateLogUI();
+
         if (player.getPV() <= 0) {
             state = BattleState.GAME_OVER;
             return;
         }
+
+        // Détection de la victoire
         if (enemy.getPV() <= 0) {
             state = BattleState.VICTORY;
+            if (!rewardsGiven) {
+                giveRewards();
+            }
             return;
         }
 
-        // 2. Gestion de l'ATB (Si personne ne joue)
+        // Orientation automatique
+        if (state != BattleState.PLAYER_MOVING && state != BattleState.GAME_OVER) {
+            player.lookAt(enemy);
+        }
+        if (state != BattleState.ENEMY_TURN && state != BattleState.VICTORY) {
+            enemy.lookAt(player);
+        }
+
+        // Système ATB
         if (state == BattleState.WAITING) {
             playerATB += player.getVIT() * delta * 5.0f;
             enemyATB += enemy.getVIT() * delta * 5.0f;
 
-            if (playerATB >= 100) {
-                playerATB = 100;
-                startPlayerTurn();
-            } else if (enemyATB >= 100) {
-                enemyATB = 100;
-                startEnemyTurn();
-            }
-        }
-
-        // 3. Logique IA (Tour Ennemi)
-        if (state == BattleState.ENEMY_TURN) {
+            if (playerATB >= 100) { playerATB = 100; startPlayerTurn(); }
+            else if (enemyATB >= 100) { enemyATB = 100; startEnemyTurn(); }
+        } else if (state == BattleState.ENEMY_TURN) {
             updateEnemyTurn(delta);
         }
     }
 
-    // ==========================================
-    // LOGIQUE JOUEUR
-    // ==========================================
+    // --- GESTION DES RÉCOMPENSES ---
+    private void giveRewards() {
+        rewardsGiven = true;
+        addLog("Victoire !");
+
+        // 1. Calcul EXP
+        int monsterLevel = enemy.getLevel();
+        int playerLevel = player.getLevel();
+        int baseExp = 20 * monsterLevel;
+
+        // Malus si le joueur est trop haut niveau
+        float multiplier = 1.0f;
+        if (playerLevel > monsterLevel) {
+            multiplier = Math.max(0.1f, 1.0f - (playerLevel - monsterLevel) * 0.2f);
+        }
+
+        int finalExp = (int) (baseExp * multiplier);
+        if (finalExp < 1) finalExp = 1;
+
+        // Gain d'XP via la méthode qui gère le Level UP
+        int oldLevel = player.getLevel();
+        player.gainExp(finalExp);
+
+        addLog("Gagné " + finalExp + " EXP.");
+        if (player.getLevel() > oldLevel) {
+            addLog("NIVEAU SUPÉRIEUR ! (" + player.getLevel() + ")");
+        }
+
+        // 2. Calcul Or
+        int goldReward = 10 * monsterLevel;
+        player.addMoney(goldReward);
+        addLog("Gagné " + goldReward + " Or.");
+        addLog("(Cliquez pour quitter)");
+
+        // 3. Suppression définitive de l'ennemi
+        if (game != null) {
+            game.deadEnemyIds.add(enemy.getId());
+            game.entities.removeValue(enemy, true);
+        }
+    }
 
     private void startPlayerTurn() {
         state = BattleState.PLAYER_TURN;
         hasMoved = false;
         pendingAction = null;
-        player.restorePA(2);
-        addLog("C'est a votre tour !");
+        player.regenPA(2);
+        addLog("A vous !");
     }
 
-    public void startMoveSelection() {
+    // --- INTERACTION JOUEUR ---
+
+    public void enableMovePhase() {
         if (state == BattleState.PLAYER_TURN && !hasMoved) {
             state = BattleState.PLAYER_MOVING;
-            addLog("Cliquez sur une case pour bouger.");
+            addLog("Déplacez-vous.");
+        } else if (hasMoved) {
+            addLog("Déjà bougé !");
         }
     }
 
-    public void tryMovePlayerTo(float targetX, float targetY) {
-        float dist = Vector2.dst(player.get_positionX(), player.get_positionY(), targetX, targetY);
+    public void playerPassTurn() {
+        if (state == BattleState.PLAYER_TURN || state == BattleState.PLAYER_SELECTING_TARGET || state == BattleState.PLAYER_MOVING) {
+            addLog("Vous passez votre tour.");
+            passTurn();
+        }
+    }
 
+    public void handleGridClick(float x, float y) {
+        // Clic pour quitter l'écran de victoire
+        if (state == BattleState.VICTORY) {
+            game.changeState(game.explorationState);
+            return;
+        }
+
+        int tileX = (int)x;
+        int tileY = (int)y;
+
+        if (state == BattleState.PLAYER_MOVING) tryMovePlayerTo(tileX, tileY);
+        else if (state == BattleState.PLAYER_SELECTING_TARGET) tryAttackTarget(tileX, tileY);
+    }
+
+    public void tryMovePlayerTo(int targetX, int targetY) {
+        int dist = Math.abs(targetX - player.getTileX()) + Math.abs(targetY - player.getTileY());
         if (dist <= player.getDEP()) {
-            player.set_position(targetX, targetY);
+            player.setGridPosition(targetX, targetY);
+            player.snapToGrid();
             hasMoved = true;
             state = BattleState.PLAYER_TURN;
-        } else {
-            addLog("Trop loin pour se deplacer !");
-        }
+            addLog("Déplacement.");
+        } else addLog("Trop loin !");
+    }
+
+    public Array<Vector2> getValidMoveTiles() {
+        Array<Vector2> t = new Array<>();
+        if (state != BattleState.PLAYER_MOVING) return t;
+        int r = player.getDEP();
+        for(int x=player.getTileX()-r; x<=player.getTileX()+r; x++)
+            for(int y=player.getTileY()-r; y<=player.getTileY()+r; y++)
+                if(Math.abs(x-player.getTileX())+Math.abs(y-player.getTileY())<=r) t.add(new Vector2(x,y));
+        return t;
     }
 
     public void startTargetSelection(BattleAction action) {
@@ -131,54 +250,29 @@ public class BattleSystem {
             if (action.canExecute(player)) {
                 this.pendingAction = action;
                 state = BattleState.PLAYER_SELECTING_TARGET;
-                addLog("Selectionnez votre cible (" + action.getName() + ")");
-            } else {
-                addLog("Pas assez de ressources (PA/PM) !");
-            }
+                addLog("Cible ?");
+            } else addLog("Pas assez de PA !");
         }
     }
 
-    public void tryAttackTarget(float x, float y) {
-        float distToEnemy = Vector2.dst(x, y, enemy.get_positionX(), enemy.get_positionY());
+    public Array<Vector2> getValidAttackTiles() {
+        Array<Vector2> t = new Array<>();
+        if (state != BattleState.PLAYER_SELECTING_TARGET || pendingAction == null) return t;
+        int r = (int) pendingAction.getRange();
+        for(int x=player.getTileX()-r; x<=player.getTileX()+r; x++)
+            for(int y=player.getTileY()-r; y<=player.getTileY()+r; y++)
+                if(Math.abs(x-player.getTileX())+Math.abs(y-player.getTileY())<=r) t.add(new Vector2(x,y));
+        return t;
+    }
 
-        if (distToEnemy < 1.5f) {
-            boolean isInRange = false;
-            Array<Vector2> specificTiles = pendingAction.getTargetableTiles(player);
-
-            if (specificTiles != null) {
-                // Vérification zone spécifique (ex: Croix)
-                int enemyX = Math.round(enemy.get_positionX());
-                int enemyY = Math.round(enemy.get_positionY());
-                for (Vector2 tile : specificTiles) {
-                    if ((int)tile.x == enemyX && (int)tile.y == enemyY) {
-                        isInRange = true; break;
-                    }
-                }
-                if (!isInRange) addLog("Ennemi hors de la zone d'effet !");
-            }
-            else {
-                // Vérification distance simple
-                float distPlayerEnemy = Vector2.dst(player.get_positionX(), player.get_positionY(),
-                    enemy.get_positionX(), enemy.get_positionY());
-                if (distPlayerEnemy <= pendingAction.getRange()) isInRange = true;
-                else addLog("Cible hors de portee !");
-            }
-
-            if (isInRange) {
+    public void tryAttackTarget(int tx, int ty) {
+        if (enemy.getTileX() == tx && enemy.getTileY() == ty) {
+            int dist = Math.abs(player.getTileX() - enemy.getTileX()) + Math.abs(player.getTileY() - enemy.getTileY());
+            if (dist <= pendingAction.getRange()) {
                 pendingAction.execute(player, enemy);
                 passTurn();
-            }
-        } else {
-            addLog("Cliquez sur l'ennemi pour valider !");
-        }
-    }
-
-    public void cancelSelection() {
-        if (state == BattleState.PLAYER_MOVING || state == BattleState.PLAYER_SELECTING_TARGET) {
-            state = BattleState.PLAYER_TURN;
-            pendingAction = null;
-            addLog("Action annulee.");
-        }
+            } else addLog("Hors de portée !");
+        } else addLog("Cible invalide !");
     }
 
     public void passTurn() {
@@ -186,58 +280,59 @@ public class BattleSystem {
         state = BattleState.WAITING;
     }
 
-    // ==========================================
-    // LOGIQUE ENNEMI (IA)
-    // ==========================================
+    // --- IA ENNEMIE ---
 
     private void startEnemyTurn() {
         state = BattleState.ENEMY_TURN;
         hasMoved = false;
         turnTimer = 0;
         pendingAction = null;
-        enemy.restorePA(2);
+        enemy.regenPA(2);
     }
 
     private void updateEnemyTurn(float delta) {
         turnTimer += delta;
         if (turnTimer < 0.8f) return;
 
-        if (!hasMoved) {
-            if (pendingAction == null) {
-                pendingAction = enemy.chooseAction();
-            }
-
-            if (pendingAction == null) {
-                addLog(enemy.getClass().getSimpleName() + " passe son tour.");
-                finishEnemyTurn();
-                return;
-            }
-
-            float requiredRange = pendingAction.getRange();
-            float currentDist = Vector2.dst(player.get_positionX(), player.get_positionY(), enemy.get_positionX(), enemy.get_positionY());
-
-            if (currentDist <= requiredRange) {
-                hasMoved = true;
-                turnTimer = 0;
-            } else {
-                Vector2 direction = new Vector2(player.get_positionX() - enemy.get_positionX(), player.get_positionY() - enemy.get_positionY()).nor();
-                float moveAmount = Math.min(currentDist - (requiredRange - 0.5f), enemy.getDEP());
-                enemy.set_position(enemy.get_positionX() + direction.x * moveAmount, enemy.get_positionY() + direction.y * moveAmount);
-
-                addLog(enemy.getClass().getSimpleName() + " s'approche...");
-                hasMoved = true;
-                turnTimer = 0;
-            }
+        if (pendingAction == null) {
+            pendingAction = enemy.chooseAction();
+            if (pendingAction == null) { finishEnemyTurn(); return; }
         }
-        else {
-            float dist = Vector2.dst(player.get_positionX(), player.get_positionY(), enemy.get_positionX(), enemy.get_positionY());
-            if (dist <= pendingAction.getRange()) {
-                pendingAction.execute(enemy, player);
-            } else {
-                addLog(enemy.getClass().getSimpleName() + " rate son attaque !");
+
+        int dist = Math.abs(player.getTileX() - enemy.getTileX()) + Math.abs(player.getTileY() - enemy.getTileY());
+        boolean inRange = dist <= pendingAction.getRange();
+
+        if (!inRange && !hasMoved) {
+            // IA de déplacement simple vers le joueur
+            int moves = enemy.getDEP();
+            int cx = enemy.getTileX(), cy = enemy.getTileY();
+            int tx = player.getTileX(), ty = player.getTileY();
+
+            while (moves > 0) {
+                int nx = cx, ny = cy;
+                if (Math.abs(tx - cx) > Math.abs(ty - cy)) { if (cx < tx) nx++; else nx--; }
+                else { if (cy < ty) ny++; else ny--; }
+
+                cx = nx; cy = ny;
+                moves--;
+                if (Math.abs(tx - cx) + Math.abs(ty - cy) <= pendingAction.getRange()) break;
             }
-            finishEnemyTurn();
+
+            enemy.setGridPosition(cx, cy);
+            enemy.snapToGrid();
+            hasMoved = true;
+            addLog(enemy.getName() + " se rapproche.");
+            turnTimer = 0;
+            return;
         }
+
+        dist = Math.abs(player.getTileX() - enemy.getTileX()) + Math.abs(player.getTileY() - enemy.getTileY());
+        if (dist <= pendingAction.getRange() && pendingAction.canExecute(enemy)) {
+            addLog(enemy.getName() + " lance " + pendingAction.getName());
+            pendingAction.execute(enemy, player);
+        }
+
+        finishEnemyTurn();
     }
 
     private void finishEnemyTurn() {
@@ -245,11 +340,7 @@ public class BattleSystem {
         state = BattleState.WAITING;
     }
 
-    // GETTERS
     public BattleState getState() { return state; }
-    public Enemy getEnemy() { return enemy; }
     public float getPlayerATB() { return playerATB; }
     public float getEnemyATB() { return enemyATB; }
-    public boolean hasMoved() { return hasMoved; }
-    public BattleAction getPendingAction() { return pendingAction; }
 }

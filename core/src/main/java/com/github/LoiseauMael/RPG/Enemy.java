@@ -13,20 +13,26 @@ import com.github.LoiseauMael.RPG.battle.BattleAction;
 
 public abstract class Enemy extends Fighter implements Disposable {
 
-    // --- ANIMATION ---
-    private Animation<TextureRegion> walkDown, walkLeft, walkRight, walkUp;
-    private float stateTime;
-    private static final int FRAME_COLS = 3;
-    private static final int FRAME_ROWS = 4;
+    // --- NOUVEAU : ETATS DE L'ENNEMI ---
+    public enum EnemyState {
+        ROAMING,       // Se balade sur la carte
+        COMBAT_IDLE    // En combat (attend les ordres du BattleSystem)
+    }
 
-    // --- IA VAGABONDAGE ---
-    private Vector2 spawnPosition;
-    private Vector2 targetPosition;
-    private float waitTimer;
-    private boolean isMoving;
-    private float wanderRadius = 3.0f;
+    protected EnemyState currentState = EnemyState.ROAMING;
+    // ------------------------------------
 
-    // --- COMBAT ---
+    protected Animation<TextureRegion> walkDown, walkLeft, walkRight, walkUp;
+    protected float stateTime = 0;
+    protected static final int FRAME_COLS = 3;
+    protected static final int FRAME_ROWS = 4;
+
+    protected Vector2 spawnPoint;
+    protected float wanderRange = 3.0f;
+    protected float wanderTimer = 0;
+    protected boolean isWaiting = true;
+    protected float moveSpeed = 1.5f;
+
     protected static class EnemyMove {
         public BattleAction action;
         public int weight;
@@ -34,117 +40,37 @@ public abstract class Enemy extends Fighter implements Disposable {
     }
     protected Array<EnemyMove> availableMoves;
 
-    /**
-     * Méthode STATIQUE pour créer le sprite AVANT d'appeler le constructeur parent.
-     * Cela évite le NullPointerException dans Entity.java.
-     */
-    private static Sprite createBaseSprite(String texturePath) {
-        Texture texture = new Texture(Gdx.files.internal(texturePath));
-        Sprite s = new Sprite(texture);
-        // Ajustement de la taille (32px -> 2 unités)
-        s.setSize(s.getWidth() / 3f / 16f, s.getHeight() / 4f / 16f);
-        return s;
-    }
+    public Enemy(float x, float y, int level, int exp, int PV, int PM, int PA,
+                 int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP, String spriteName) {
+        super(x, y, level, exp, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, null);
 
-    // Constructeur
-    protected Enemy(float x, float y, int PV, int PM, int PA, int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP, String texturePath) {
-        // On passe le sprite créé par la méthode statique directement au parent
-        super(x, y, 0, 0, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, createBaseSprite(texturePath));
+        Texture tex = new Texture(Gdx.files.internal(spriteName));
+        this.sprite = new Sprite(tex);
+        this.sprite.setSize(1f, 1f);
+
+        this.spawnPoint = new Vector2(x + 0.5f, y);
+        this.nom = spriteName.replace(".png", "");
+
+        setCollisionBounds(0.6f, 0.4f, 0f, 0.1f);
+        initAnimations(tex);
 
         this.availableMoves = new Array<>();
-        this.spawnPosition = new Vector2(x, y);
-        this.targetPosition = new Vector2(x, y);
-
-        // Maintenant que le parent est initialisé, 'this.sprite' existe.
-        // On peut initialiser les animations.
-        initAnimations();
-
-        // Initialisation de l'IA
         setupMoves();
     }
 
-    private void initAnimations() {
-        // On récupère la texture depuis le sprite (qui a été créé dans createBaseSprite)
-        Texture texture = this.sprite.getTexture();
-
-        // Découpe
+    private void initAnimations(Texture texture) {
         TextureRegion[][] tmp = TextureRegion.split(texture, texture.getWidth() / FRAME_COLS, texture.getHeight() / FRAME_ROWS);
-        walkDown = new Animation<>(0.2f, tmp[0]);
-        walkLeft = new Animation<>(0.2f, tmp[1]);
+        walkDown  = new Animation<>(0.2f, tmp[0]);
+        walkLeft  = new Animation<>(0.2f, tmp[1]);
         walkRight = new Animation<>(0.2f, tmp[2]);
-        walkUp = new Animation<>(0.2f, tmp[3]);
-    }
-
-    protected void initStats(int targetLevel, int bPV, int bPM, int bPA, int bFOR, int bDEF, int bFORM, int bDEFM, int bVIT, int bDEP) {
-        // 1. Stats de base
-        this.level = 1;
-        this.maxPV = bPV; this.PV = bPV;
-        this.maxPM = bPM; this.PM = bPM;
-        this.maxPA = bPA; this.PA = bPA;
-        this.FOR = bFOR;
-        this.DEF = bDEF;
-        this.FORM = bFORM;
-        this.DEFM = bDEFM;
-        this.VIT = bVIT;
-        this.DEP = bDEP;
-
-        // 2. Montée de niveau simulée
-        for (int i = 1; i < targetLevel; i++) {
-            this.level++;
-            this.maxPV += Math.max(1, (int)(this.maxPV * 0.1f)); this.PV = this.maxPV;
-            this.maxPM += Math.max(1, (int)(this.maxPM * 0.1f)); this.PM = this.maxPM;
-            this.FOR  += Math.max(1, (int)(this.FOR * 0.1f));
-            this.DEF  += Math.max(1, (int)(this.DEF * 0.1f));
-            this.FORM += Math.max(1, (int)(this.FORM * 0.1f));
-            this.DEFM += Math.max(1, (int)(this.DEFM * 0.1f));
-            this.VIT  += Math.max(1, (int)(this.VIT * 0.1f));
-        }
+        walkUp    = new Animation<>(0.2f, tmp[3]);
     }
 
     protected abstract void setupMoves();
 
-    @Override
-    public void update(float delta) {
-        stateTime += delta;
-
-        if (isMoving) {
-            float speed = 2.0f * delta;
-            Vector2 position = new Vector2(get_positionX(), get_positionY());
-            Vector2 direction = new Vector2(targetPosition).sub(position).nor();
-            float distance = position.dst(targetPosition);
-
-            if (distance <= speed) {
-                set_position(targetPosition.x, targetPosition.y);
-                isMoving = false;
-                waitTimer = MathUtils.random(1.0f, 3.0f);
-            } else {
-                set_position(position.x + direction.x * speed, position.y + direction.y * speed);
-
-                if (Math.abs(direction.x) > Math.abs(direction.y)) {
-                    this.getSprite().setRegion(direction.x > 0 ? walkRight.getKeyFrame(stateTime, true) : walkLeft.getKeyFrame(stateTime, true));
-                } else {
-                    this.getSprite().setRegion(direction.y > 0 ? walkUp.getKeyFrame(stateTime, true) : walkDown.getKeyFrame(stateTime, true));
-                }
-            }
-        } else {
-            waitTimer -= delta;
-            if (waitTimer <= 0) {
-                float randomAngle = MathUtils.random(0f, 360f);
-                float randomDist = MathUtils.random(0f, wanderRadius);
-                targetPosition.set(
-                    spawnPosition.x + MathUtils.cosDeg(randomAngle) * randomDist,
-                    spawnPosition.y + MathUtils.sinDeg(randomAngle) * randomDist
-                );
-                isMoving = true;
-            } else {
-                TextureRegion[] frames = walkDown.getKeyFrames();
-                if (frames.length > 1) this.getSprite().setRegion(frames[1]);
-            }
-        }
-    }
-
     public BattleAction chooseAction() {
         if (availableMoves.size == 0) return null;
+
         Array<EnemyMove> validMoves = new Array<>();
         int totalWeight = 0;
         for (EnemyMove move : availableMoves) {
@@ -154,28 +80,99 @@ public abstract class Enemy extends Fighter implements Disposable {
             }
         }
         if (validMoves.size == 0) return availableMoves.first().action;
-        int randomValue = MathUtils.random(0, totalWeight - 1);
-        int currentSum = 0;
+
+        int r = MathUtils.random(0, totalWeight - 1);
+        int c = 0;
         for (EnemyMove move : validMoves) {
-            currentSum += move.weight;
-            if (randomValue < currentSum) return move.action;
+            c += move.weight;
+            if (r < c) return move.action;
         }
         return validMoves.first().action;
     }
 
-    // Compatibilité
-    public static Enemy create(float x, float y, int type, String texturePath) {
-        switch (type) {
-            case 2: return new BossEnemy(x, y, texturePath);
-            case 1: return new EliteEnemy(x, y, texturePath);
-            case 0: default: return new NormalEnemy(x, y, texturePath);
+    // --- CHANGEMENT D'ETAT ---
+    public void setInCombat(boolean inCombat) {
+        if (inCombat) {
+            this.currentState = EnemyState.COMBAT_IDLE;
+            // Arrêt immédiat et forcé
+            this.velocityX = 0;
+            this.velocityY = 0;
+        } else {
+            this.currentState = EnemyState.ROAMING;
         }
     }
 
     @Override
-    public void dispose() {
-        if (this.getSprite() != null && this.getSprite().getTexture() != null) {
-            this.getSprite().getTexture().dispose();
+    public void update(float delta) {
+        // --- LOGIQUE D'ETAT STRICTE ---
+        switch (currentState) {
+            case ROAMING:
+                updateRoamingAI(delta);
+                break;
+            case COMBAT_IDLE:
+                // En combat, on s'assure que la vélocité reste à 0
+                // Le déplacement est géré par téléportation (BattleSystem) ou cinématique dédiée
+                this.velocityX = 0;
+                this.velocityY = 0;
+                break;
         }
+
+        super.update(delta); // Applique la physique (Entity)
+        updateAnimation(delta);
+    }
+
+    private void updateRoamingAI(float delta) {
+        wanderTimer -= delta;
+        if (isWaiting) {
+            if (wanderTimer <= 0) {
+                isWaiting = false;
+                wanderTimer = MathUtils.random(1f, 3f);
+                float angle = MathUtils.random(0, 360) * MathUtils.degreesToRadians;
+                velocityX = MathUtils.cos(angle) * moveSpeed;
+                velocityY = MathUtils.sin(angle) * moveSpeed;
+            } else {
+                velocityX = 0; velocityY = 0;
+            }
+        } else {
+            if (wanderTimer <= 0 || Vector2.dst(positionX, positionY, spawnPoint.x, spawnPoint.y) > wanderRange) {
+                isWaiting = true;
+                wanderTimer = MathUtils.random(2f, 5f);
+                velocityX = 0; velocityY = 0;
+            }
+        }
+    }
+
+    private void updateAnimation(float delta) {
+        stateTime += delta;
+        boolean isMoving = (velocityX != 0 || velocityY != 0);
+
+        // Si immobile, on garde la direction actuelle (gérée par lookAt en combat)
+        if (isMoving) {
+            if (Math.abs(velocityX) > Math.abs(velocityY)) {
+                currentDirection = (velocityX > 0) ? 2 : 1;
+            } else {
+                currentDirection = (velocityY > 0) ? 3 : 0;
+            }
+        }
+
+        TextureRegion currentFrame;
+        switch (currentDirection) {
+            case 1: currentFrame = isMoving ? walkLeft.getKeyFrame(stateTime, true) : walkLeft.getKeyFrames()[1]; break;
+            case 2: currentFrame = isMoving ? walkRight.getKeyFrame(stateTime, true) : walkRight.getKeyFrames()[1]; break;
+            case 3: currentFrame = isMoving ? walkUp.getKeyFrame(stateTime, true) : walkUp.getKeyFrames()[1]; break;
+            default: currentFrame = isMoving ? walkDown.getKeyFrame(stateTime, true) : walkDown.getKeyFrames()[1]; break;
+        }
+        if (currentFrame != null && sprite != null) sprite.setRegion(currentFrame);
+    }
+
+    @Override
+    protected void updateSpriteRegion() {
+        // Met à jour l'image immédiatement (utile pour l'orientation instantanée)
+        updateAnimation(0);
+    }
+
+    @Override
+    public void dispose() {
+        if (sprite != null && sprite.getTexture() != null) sprite.getTexture().dispose();
     }
 }

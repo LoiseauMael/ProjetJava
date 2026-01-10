@@ -1,24 +1,27 @@
 package com.github.LoiseauMael.RPG.items;
 
-import com.github.LoiseauMael.RPG.Fighter;
+import com.github.LoiseauMael.RPG.Player;
 
-public class HealthPotion extends Item {
-    private int healAmount;
+// On étend Consumable (qui étend Item)
+public class HealthPotion extends Consumable {
+    private int amount;
 
-    public HealthPotion(String name, String description, int healAmount) {
+    public HealthPotion(String name, String description, int amount) {
         super(name, description);
-        this.healAmount = healAmount;
-        this.count = 1;
+        this.amount = amount;
     }
 
+    // CORRECTION : On renvoie un boolean (Vrai = consommé, Faux = annulé)
     @Override
-    public void use(Fighter target) {
-        target.heal(healAmount);
-        this.count--;
+    public boolean use(Player player) {
+        // Si la vie est pleine, on ne boit pas la potion
+        if (player.getPV() >= player.getMaxPV()) {
+            return false;
+        }
+
+        player.heal(amount);
+        return true;
     }
 
-    // --- AJOUTEZ CETTE MÉTHODE ---
-    public int getAmount() {
-        return healAmount;
-    }
+    public int getAmount() { return amount; }
 }

@@ -7,7 +7,7 @@ public class Weapon extends Equipment {
     public int bonusFORM;
 
     public Weapon(String name, String desc, Class<? extends Player> req, int bonusFOR, int bonusFORM) {
-        super(name, desc, req);
+        super(name, desc, req); // Appel correct à Equipment
         this.bonusFOR = bonusFOR;
         this.bonusFORM = bonusFORM;
     }

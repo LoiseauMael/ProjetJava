@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="150" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="16" nextobjectid="67">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="150" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="18" nextobjectid="102">
  <tileset firstgid="1" source="../tuiles/exterior.tsx"/>
+ <tileset firstgid="751" source="placement.tsx"/>
  <layer id="1" name="SolInt" width="150" height="100">
   <data encoding="csv">
 182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,182,
@@ -937,7 +938,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <layer id="11" name="Collision" width="150" height="100" visible="0">
+ <layer id="11" name="Collisions" width="150" height="100" visible="0">
   <data encoding="csv">
 637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,
 637,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,637,
@@ -1041,4 +1042,134 @@
 637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637,637
 </data>
  </layer>
+ <objectgroup id="17" name="Entities">
+  <object id="69" name="Start" type="PlayerStart" x="286.469" y="232.1">
+   <point/>
+  </object>
+  <object id="70" type="Goblin" x="129.675" y="350.805">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="73" type="KingGoblin" x="129.22" y="401.765">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="77" type="Goblin" x="174.265" y="320.775">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="78" type="Goblin" x="47.775" y="308.49">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="79" type="Goblin" x="61.8801" y="378.56">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="80" type="Goblin" x="176.995" y="478.66">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="81" type="Goblin" x="62.7901" y="474.11">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="82" type="Goblin" x="267.54" y="468.195">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="83" type="Goblin" x="206.57" y="411.32">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="84" type="Goblin" x="387.333" y="956.667">
+   <properties>
+    <property name="level" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="85" type="Healer" x="60" y="210">
+   <properties>
+    <property name="dialogues" value="test"/>
+   </properties>
+  </object>
+  <object id="88" type="Merchant" x="201.333" y="218.667">
+   <properties>
+    <property name="dialogues" value="Tu trouveras tout ce dont tu as besoin aventurier !"/>
+   </properties>
+  </object>
+  <object id="89" type="Goblin" x="573.333" y="414.667">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="90" type="Goblin" x="534.667" y="286">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="91" type="Goblin" x="473.333" y="440.667">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="92" type="Goblin" x="515.333" y="577.333">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="93" type="Goblin" x="670" y="479.333">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="94" type="Goblin" x="659.333" y="590.667">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="95" type="Goblin" x="679.333" y="348.667">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="96" type="Goblin" x="635.333" y="244.667">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="97" type="Goblin" x="592" y="318.667">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="98" type="Goblin" x="312.667" y="627.333">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="99" type="Goblin" x="139.333" y="601.333">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="100" type="Goblin" x="404.667" y="555.333">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+  <object id="101" type="Goblin" x="425.333" y="633.333">
+   <properties>
+    <property name="level" type="int" value="5"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>

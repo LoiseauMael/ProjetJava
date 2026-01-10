@@ -14,14 +14,10 @@ public class ArtAction extends BattleAction {
     }
 
     @Override
-    public int getAPCost() {
-        return paCost;
-    }
+    public int getAPCost() { return paCost; }
 
     @Override
-    public int getMPCost() {
-        return 0; // Pas de coût en mana pour les arts physiques
-    }
+    public int getMPCost() { return 0; }
 
     @Override
     public boolean canExecute(Fighter user) {
@@ -30,18 +26,14 @@ public class ArtAction extends BattleAction {
 
     @Override
     public void execute(Fighter user, Fighter target) {
-        // 1. Payer le coût en PA (on utilise restorePA avec une valeur négative)
-        user.restorePA(-getAPCost());
+        // CORRECTION : Utilisation de consumePA
+        user.consumePA(getAPCost());
 
-        // 2. Calcul des dégâts : (Force * Multiplicateur) - Défense ennemie
         int damage = (int)(user.getFOR() * multiplier) - target.getDEF();
-
         if (damage < 1) damage = 1;
 
-        // 3. Appliquer les dégâts
         target.takeDamage(damage);
 
-        // --- NOUVEAU LOG ---
-        BattleSystem.addLog(user.getClass().getSimpleName() + " utilise " + getName() + " et inflige " + damage + " degats !");
+        BattleSystem.addLog(user.getName() + " utilise " + getName() + " : " + damage + " degats !");
     }
 }

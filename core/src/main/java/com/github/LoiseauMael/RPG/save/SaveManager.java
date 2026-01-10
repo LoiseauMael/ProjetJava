@@ -3,6 +3,7 @@ package com.github.LoiseauMael.RPG.save;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
+import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.Player;
 import com.github.LoiseauMael.RPG.SwordMan;
 import com.github.LoiseauMael.RPG.Wizard;
@@ -10,167 +11,188 @@ import com.github.LoiseauMael.RPG.items.*;
 
 public class SaveManager {
 
-    private static final String SAVE_FILE = "savegame.json";
+    private static final String SAVE_FILE = "save.json";
 
-    public static boolean saveExists() {
-        return Gdx.files.local(SAVE_FILE).exists();
-    }
+    public static void saveGame(Main game) {
+        if (game.player == null) return;
 
-    public static void deleteSave() {
-        FileHandle file = Gdx.files.local(SAVE_FILE);
-        if (file.exists()) {
-            file.delete();
-            Gdx.app.log("SaveManager", "Sauvegarde supprimee.");
-        }
-    }
-
-    public static void saveGame(Player player) {
+        Json json = new Json();
         SaveData data = new SaveData();
+        Player player = game.player;
 
-        // 1. Sauvegarder Stats
-        data.playerClass = player.getClass().getSimpleName(); // "SwordMan" ou "Wizard"
+        // --- 1. Sauvegarde du Joueur ---
+        data.playerClass = (player instanceof Wizard) ? "Wizard" : "SwordMan";
         data.level = player.getLevel();
         data.exp = player.getExp();
         data.money = player.getMoney();
         data.currentPV = player.getPV();
         data.currentPM = player.getPM();
+
         data.x = player.get_positionX();
         data.y = player.get_positionY();
 
-        // 2. Sauvegarder Inventaire
+        // --- 2. Sauvegarde de l'Inventaire ---
         for (Item item : player.getInventory()) {
-            data.inventory.add(convertToData(item));
+            data.inventory.add(createItemData(item));
         }
 
-        // 3. Sauvegarder Equipement
-        if (player.getEquippedWeapon() != null) data.equippedWeapon = convertToData(player.getEquippedWeapon());
-        if (player.getEquippedArmor() != null) data.equippedArmor = convertToData(player.getEquippedArmor());
-        if (player.getEquippedRelic() != null) data.equippedRelic = convertToData(player.getEquippedRelic());
+        // --- 3. Sauvegarde de l'Équipement ---
+        if (player.getEquippedWeapon() != null) data.equippedWeapon = createItemData(player.getEquippedWeapon());
+        if (player.getEquippedArmor() != null) data.equippedArmor = createItemData(player.getEquippedArmor());
+        if (player.getEquippedRelic() != null) data.equippedRelic = createItemData(player.getEquippedRelic());
 
-        // Ecriture fichier
-        Json json = new Json();
+        // --- 4. Sauvegarde du Monde ---
+        data.currentMap = game.currentMapName;
+        if (game.deadEnemyIds != null) {
+            for (Integer id : game.deadEnemyIds) {
+                data.deadEnemyIds.add(id);
+            }
+        }
+
         FileHandle file = Gdx.files.local(SAVE_FILE);
         file.writeString(json.prettyPrint(data), false);
-        Gdx.app.log("SaveManager", "Partie sauvegardée !");
+        System.out.println("Partie sauvegardée : Map=" + data.currentMap + " Pos=(" + data.x + "," + data.y + ")");
     }
 
-    public static Player loadGame() {
-        if (!saveExists()) return null;
-
+    public static void loadGame(Main game) {
         FileHandle file = Gdx.files.local(SAVE_FILE);
+        if (!file.exists()) return;
+
         Json json = new Json();
         SaveData data = json.fromJson(SaveData.class, file.readString());
 
-        // 1. Instanciation dynamique selon la classe sauvegardée
-        Player player;
+        // 1. Recréation du Joueur
         if ("Wizard".equals(data.playerClass)) {
-            player = Wizard.create(data.x, data.y);
+            game.player = Wizard.create(0, 0);
         } else {
-            player = SwordMan.create(data.x, data.y);
+            game.player = SwordMan.create(0, 0);
         }
 
-        // 2. Charger Stats
-        player.setLevel(data.level);
-        player.setExp(data.exp);
-        player.setMoney(data.money);
-        player.setPV(data.currentPV);
-        player.setPM(data.currentPM);
+        // 2. Application de la position
+        // C'est cette valeur que Main récupérera via player.get_positionX/Y()
+        game.player.set_position(data.x, data.y);
 
-        // 3. Charger Inventaire
-        player.getInventory().clear();
-        for (SaveData.ItemData iData : data.inventory) {
-            Item item = convertFromData(iData);
-            if (item != null) player.addItem(item);
+        // 3. Restauration Stats
+        game.player.setLevel(data.level);
+        game.player.setExp(data.exp);
+        game.player.setMoney(data.money);
+        game.player.setPV(data.currentPV);
+        game.player.setPM(data.currentPM);
+
+        // 4. Restauration de l'Inventaire
+        if (data.inventory != null) {
+            for (SaveData.ItemData itemData : data.inventory) {
+                Item item = createItemFromData(itemData);
+                if (item != null) game.player.addItem(item);
+            }
         }
 
-        // 4. Charger Equipement
+        // 5. Restauration de l'Équipement
         if (data.equippedWeapon != null) {
-            Item w = convertFromData(data.equippedWeapon);
-            if (w instanceof Equipment) player.equip((Equipment) w);
+            Item w = createItemFromData(data.equippedWeapon);
+            if (w instanceof Weapon) game.player.equip((Weapon) w);
         }
         if (data.equippedArmor != null) {
-            Item a = convertFromData(data.equippedArmor);
-            if (a instanceof Equipment) player.equip((Equipment) a);
+            Item a = createItemFromData(data.equippedArmor);
+            if (a instanceof Armor) game.player.equip((Armor) a);
         }
         if (data.equippedRelic != null) {
-            Item r = convertFromData(data.equippedRelic);
-            if (r instanceof Equipment) player.equip((Equipment) r);
+            Item r = createItemFromData(data.equippedRelic);
+            if (r instanceof Relic) game.player.equip((Relic) r);
         }
 
-        Gdx.app.log("SaveManager", "Partie chargée !");
-        return player;
+        // 6. Restauration du Monde
+        if (data.currentMap != null) {
+            game.currentMapName = data.currentMap;
+        }
+        game.deadEnemyIds.clear();
+        if (data.deadEnemyIds != null) {
+            for (Integer id : data.deadEnemyIds) {
+                game.deadEnemyIds.add(id);
+            }
+        }
+
+        System.out.println("SaveManager chargé. Player Position: " + game.player.get_positionX() + "," + game.player.get_positionY());
     }
 
-    // ==========================================
-    // MÉTHODES DE CONVERSION (Celles qui manquaient)
-    // ==========================================
-
-
-
-    private static SaveData.ItemData convertToData(Item item) {
-        SaveData.ItemData d = new SaveData.ItemData();
-        d.name = item.getName();
-        d.description = item.getDescription();
-        d.count = item.getCount();
+    // --- Helpers ---
+    private static SaveData.ItemData createItemData(Item item) {
+        SaveData.ItemData data = new SaveData.ItemData();
+        data.name = item.getName();
+        data.description = item.getDescription();
+        data.count = item.getCount();
 
         if (item instanceof Weapon) {
-            d.type = "WEAPON";
-            d.bonus1 = ((Weapon) item).bonusFOR;
-            d.bonus2 = ((Weapon) item).bonusFORM;
-            d.requiredClass = getClassNameFromClass(((Weapon) item).getRequiredClass());
+            data.type = "WEAPON";
+            Weapon w = (Weapon) item;
+            data.bonus1 = w.bonusFOR;
+            data.bonus2 = w.bonusFORM;
+            data.requiredClass = getClassName(w.getRequiredClass());
         } else if (item instanceof Armor) {
-            d.type = "ARMOR";
-            d.bonus1 = ((Armor) item).bonusDEF;
-            d.bonus2 = ((Armor) item).bonusDEFM;
-            d.requiredClass = getClassNameFromClass(((Armor) item).getRequiredClass());
+            data.type = "ARMOR";
+            Armor a = (Armor) item;
+            data.bonus1 = a.bonusDEF;
+            data.bonus2 = a.bonusDEFM;
+            data.requiredClass = getClassName(a.getRequiredClass());
         } else if (item instanceof Relic) {
-            d.type = "RELIC";
-            // On stocke les floats en int (x100) pour garder la précision simple
-            d.bonus1 = (int)(((Relic) item).damageMultiplier * 100);
-            d.bonus2 = (int)(((Relic) item).defenseMultiplier * 100);
-        } else {
-            d.type = "CONSUMABLE";
-            if (item instanceof HealthPotion) d.bonus1 = ((HealthPotion)item).getAmount();
-            else if (item instanceof ManaPotion) d.bonus1 = ((ManaPotion)item).getAmount();
-            else if (item instanceof EnergyPotion) d.bonus1 = ((EnergyPotion)item).getAmount();
+            data.type = "RELIC";
+            Relic r = (Relic) item;
+            data.bonus1 = r.damageMultiplier;
+            data.bonus2 = r.defenseMultiplier;
+        } else if (item instanceof Consumable) {
+            data.type = "CONSUMABLE";
+            if (item instanceof HealthPotion) {
+                data.specificType = "HEALTH";
+                data.bonus1 = ((HealthPotion) item).getAmount();
+            } else if (item instanceof ManaPotion) {
+                data.specificType = "MANA";
+                data.bonus1 = ((ManaPotion) item).getAmount();
+            } else if (item instanceof EnergyPotion) {
+                data.specificType = "ENERGY";
+                data.bonus1 = ((EnergyPotion) item).getAmount();
+            }
         }
-        return d;
+        return data;
     }
 
-    private static Item convertFromData(SaveData.ItemData d) {
-        Item item = null;
-
-        // Récupération de la classe requise
-        Class<? extends Player> reqClass = null;
-        if (d.requiredClass != null) {
-            if (d.requiredClass.equals("SwordMan")) reqClass = SwordMan.class;
-            else if (d.requiredClass.equals("Wizard")) reqClass = Wizard.class;
+    private static Item createItemFromData(SaveData.ItemData data) {
+        Class<? extends Player> reqClass = resolveClass(data.requiredClass);
+        if ("WEAPON".equals(data.type)) {
+            Weapon w = new Weapon(data.name, data.description, reqClass, (int) data.bonus1, (int) data.bonus2);
+            w.setCount(data.count);
+            return w;
+        } else if ("ARMOR".equals(data.type)) {
+            Armor a = new Armor(data.name, data.description, reqClass, (int) data.bonus1, (int) data.bonus2);
+            a.setCount(data.count);
+            return a;
+        } else if ("RELIC".equals(data.type)) {
+            Relic r = new Relic(data.name, data.description, data.bonus1, data.bonus2);
+            r.setCount(data.count);
+            return r;
+        } else if ("CONSUMABLE".equals(data.type)) {
+            Item c = null;
+            if ("HEALTH".equals(data.specificType)) c = new HealthPotion(data.name, data.description, (int) data.bonus1);
+            else if ("MANA".equals(data.specificType)) c = new ManaPotion(data.name, data.description, (int) data.bonus1);
+            else if ("ENERGY".equals(data.specificType)) c = new EnergyPotion(data.name, data.description, (int) data.bonus1);
+            if (c != null) c.setCount(data.count);
+            return c;
         }
-
-        switch (d.type) {
-            case "WEAPON":
-                item = new Weapon(d.name, d.description, reqClass, d.bonus1, d.bonus2);
-                break;
-            case "ARMOR":
-                item = new Armor(d.name, d.description, reqClass, d.bonus1, d.bonus2);
-                break;
-            case "RELIC":
-                item = new Relic(d.name, d.description, d.bonus1 / 100f, d.bonus2 / 100f);
-                break;
-            case "CONSUMABLE":
-                if (d.name.contains("Vie")) item = new HealthPotion(d.name, d.description, d.bonus1);
-                else if (d.name.contains("Ether") || d.name.contains("Mana")) item = new ManaPotion(d.name, d.description, d.bonus1);
-                else if (d.name.contains("Energ")) item = new EnergyPotion(d.name, d.description, d.bonus1);
-                break;
-        }
-
-        if (item != null) item.setCount(d.count);
-        return item;
+        return null;
     }
 
-    // Petit helper pour convertir la Class en String proprement
-    private static String getClassNameFromClass(Class<? extends Player> clazz) {
-        if (clazz == null) return null;
-        return clazz.getSimpleName();
+    private static String getClassName(Class<? extends Player> c) {
+        if (c == null) return null;
+        if (c.equals(Wizard.class)) return "Wizard";
+        if (c.equals(SwordMan.class)) return "SwordMan";
+        return null;
     }
+
+    private static Class<? extends Player> resolveClass(String name) {
+        if ("Wizard".equals(name)) return Wizard.class;
+        if ("SwordMan".equals(name)) return SwordMan.class;
+        return null;
+    }
+
+    public static boolean saveExists() { return Gdx.files.local(SAVE_FILE).exists(); }
+    public static void deleteSave() { if (saveExists()) Gdx.files.local(SAVE_FILE).delete(); }
 }

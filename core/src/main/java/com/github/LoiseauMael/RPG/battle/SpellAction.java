@@ -14,14 +14,10 @@ public class SpellAction extends BattleAction {
     }
 
     @Override
-    public int getAPCost() {
-        return 2; // Coût fixe en PA pour un sort
-    }
+    public int getAPCost() { return 2; }
 
     @Override
-    public int getMPCost() {
-        return mpCost;
-    }
+    public int getMPCost() { return mpCost; }
 
     @Override
     public boolean canExecute(Fighter user) {
@@ -30,19 +26,15 @@ public class SpellAction extends BattleAction {
 
     @Override
     public void execute(Fighter user, Fighter target) {
-        // 1. Payer les coûts
-        user.restoreMana(-getMPCost());
-        user.restorePA(-getAPCost());
+        // CORRECTION : Utilisation de consumePM et consumePA
+        user.consumePM(getMPCost());
+        user.consumePA(getAPCost());
 
-        // 2. Calcul Dégâts Magiques
         int damage = (user.getFORM() + power) - target.getDEFM();
-
         if (damage < 1) damage = 1;
 
-        // 3. Appliquer les dégâts
         target.takeDamage(damage);
 
-        // --- NOUVEAU LOG ---
-        BattleSystem.addLog(user.getClass().getSimpleName() + " lance " + getName() + " : " + damage + " degats magiques !");
+        BattleSystem.addLog(user.getName() + " lance " + getName() + " : " + damage + " degats magiques !");
     }
 }

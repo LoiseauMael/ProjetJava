@@ -1,16 +1,11 @@
 package com.github.LoiseauMael.RPG.npcs;
 
-import com.github.LoiseauMael.RPG.Player;
-import com.badlogic.gdx.Gdx;
-
 public class MerchantNPC extends NPC {
-    public MerchantNPC(float x, float y, String texturePath, String name, String... dialogues) {
-        super(x, y, texturePath, name, dialogues);
+
+    public MerchantNPC(float x, float y, String[] dialogues) {
+        // Appelle le constructeur parent avec le chemin de la spritesheet
+        super(x, y, "Marchand", dialogues, "MerchantSpriteSheet.png");
     }
 
-    @Override
-    public void onInteract(Player player) {
-        // Ici, on pourrait ouvrir un menu de magasin
-        Gdx.app.log("PNJ", "Marchand : 'Regardez mes articles !'");
-    }
+    // Pas besoin de surcharger update/draw, la classe NPC s'en occupe
 }
