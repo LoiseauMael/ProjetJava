@@ -1,0 +1,61 @@
+{
+playerClass: Wizard
+level: 1
+money: 320
+currentPV: 70
+currentPM: 50
+x: 13.316061
+y: 85.93221
+currentMap: map.tmx
+inventory: [
+	{
+		type: CONSUMABLE
+		specificType: HEALTH
+		name: Potion de Vie
+		description: Rend 20 PV
+		count: 1
+		bonus1: 20
+	}
+	{
+		name: Ether
+		description: Rend 10 PM
+		count: 1
+	}
+	{
+		type: WEAPON
+		name: Vieux Bâton
+		description: Basique.
+		count: 1
+		bonus1: 1
+		bonus2: 5
+		requiredClass: Wizard
+	}
+	{
+		type: ARMOR
+		name: Petite Toge
+		description: Tissu.
+		count: 1
+		bonus1: 2
+		bonus2: 10
+		requiredClass: Wizard
+	}
+]
+equippedWeapon: {
+	type: WEAPON
+	name: Vieux Bâton
+	description: Basique.
+	count: 1
+	bonus1: 1
+	bonus2: 5
+	requiredClass: Wizard
+}
+equippedArmor: {
+	type: ARMOR
+	name: Petite Toge
+	description: Tissu.
+	count: 1
+	bonus1: 2
+	bonus2: 10
+	requiredClass: Wizard
+}
+}
