@@ -4,19 +4,29 @@ import com.github.LoiseauMael.RPG.Fighter;
 
 public class AttackAction extends BattleAction {
 
+    private int apCost;
+    private boolean isRegenAttack;
+
+    // 1. Constructeur pour le JOUEUR (Attaque de base)
+    // -> Coût 0 PA, Régénère 2 PA
     public AttackAction() {
-        // Nom, Description, Portée fixe à 2 comme demandé
-        super("Attaque", "Coup basique (Portée 2)", 2);
+        super("Attaque", "Coup basique (+2 PA)", 1);
+        this.apCost = 0;
+        this.isRegenAttack = true;
     }
 
-    // Constructeur pour les ennemis qui voudraient changer la portée
+    // 2. Constructeur pour les ENNEMIS (Attaques personnalisées)
+    // -> Coût 2 PA (standard), Pas de régénération spéciale
+    // Ce constructeur est celui requis par NormalEnemy, EliteEnemy, etc.
     public AttackAction(String name, String description, float range) {
         super(name, description, range);
+        this.apCost = 2;
+        this.isRegenAttack = false;
     }
 
     @Override
     public int getAPCost() {
-        return 2;
+        return apCost;
     }
 
     @Override
@@ -26,17 +36,27 @@ public class AttackAction extends BattleAction {
 
     @Override
     public boolean canExecute(Fighter user) {
-        return user.getPA() >= getAPCost();
+        // On vérifie si l'utilisateur a assez de PA (sera toujours vrai pour le joueur car coût = 0)
+        return user.getPA() >= apCost;
     }
 
     @Override
     public void execute(Fighter user, Fighter target) {
-        user.consumePA(getAPCost());
+        // Consommation (0 pour le joueur, 2 pour les ennemis)
+        user.consumePA(apCost);
 
-        // Calcul simple des dégâts
+        // Régénération (Seulement pour l'attaque de base du joueur)
+        if (isRegenAttack) {
+            user.regenPA(2);
+            BattleSystem.addLog(user.getName() + " récupère 2 PA.");
+        }
+
+        // Calcul des dégâts
         int damage = Math.max(1, user.getFOR() - target.getDEF());
         target.takeDamage(damage);
 
-        BattleSystem.addLog(user.getName() + " attaque et inflige " + damage + " dgts !");
+        // Logs
+        BattleSystem.addLog(user.getName() + " utilise " + getName() + " !");
+        BattleSystem.addLog("Inflige " + damage + " dégâts.");
     }
 }

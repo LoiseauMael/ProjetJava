@@ -1,6 +1,8 @@
 package com.github.LoiseauMael.RPG.states;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -12,17 +14,23 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.Array;
 import com.github.LoiseauMael.RPG.Enemy;
 import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.battle.AttackAction;
 import com.github.LoiseauMael.RPG.battle.BattleSystem;
+import com.github.LoiseauMael.RPG.skills.Skill;
 
-public class CombatState implements IGameState {
+// AJOUT : Implements InputProcessor pour gérer proprement les clics sur la grille
+public class CombatState implements IGameState, InputProcessor {
 
     private Main game;
     private Enemy enemy;
     private Label statsLabel;
     private ShapeRenderer shapeRenderer;
+
+    // UI Elements
+    private Table skillsTable;
 
     public CombatState(Main game) {
         this.game = game;
@@ -40,50 +48,44 @@ public class CombatState implements IGameState {
             return;
         }
 
-        // 1. Désactiver l'IA de déplacement de l'ennemi (pour qu'il ne se balade pas)
         enemy.setInCombat(true);
-
-        // 2. Désactiver le déplacement libre du joueur
         game.player.setInputEnabled(false);
 
-        // 3. Gestion Distanciation : Si trop proche (< 3 cases), on décale l'ennemi
         if (game.player.getGridDistance(enemy) < 3) {
             int playerX = game.player.getTileX();
             int enemyX = enemy.getTileX();
-            // On repousse l'ennemi à l'opposé du joueur
             int newX = (enemyX >= playerX) ? playerX + 3 : playerX - 3;
-
             enemy.setGridPosition(newX, enemy.getTileY());
             enemy.snapToGrid();
         }
 
-        // Initialisation du système de combat
-        // MODIFICATION : On passe 'game' pour la gestion des sauvegardes/morts
         game.battleSystem = new BattleSystem(game, game.player, this.enemy);
-
         setupCombatUI();
-        Gdx.input.setInputProcessor(game.combatStage);
+
+        // CORRECTION IMPORTANTE : InputMultiplexer
+        // L'UI (combatStage) reçoit les clics en premier. S'il ne les traite pas (clic à côté des boutons),
+        // alors 'this' (CombatState) les reçoit pour gérer la grille.
+        InputMultiplexer multiplexer = new InputMultiplexer();
+        multiplexer.addProcessor(game.combatStage);
+        multiplexer.addProcessor(this);
+        Gdx.input.setInputProcessor(multiplexer);
     }
 
     private void setupCombatUI() {
         game.combatStage.clear();
-        Table table = new Table();
-        table.setFillParent(true);
+        Table mainTable = new Table();
+        mainTable.setFillParent(true);
 
-        // Label des statistiques (PV, ATB)
         statsLabel = new Label("", game.skin);
         statsLabel.setFontScale(1.2f);
-        table.add(statsLabel).colspan(2).pad(20).top().row();
+        mainTable.add(statsLabel).colspan(2).pad(20).top().row();
 
-        // Espace vide pour centrer le reste
-        table.add().expand().colspan(2).row();
+        mainTable.add().expand().colspan(2).row();
 
-        // Ajout de la zone de logs si elle existe
         if (game.battleSystem.getLogScroll() != null) {
-            table.add(game.battleSystem.getLogScroll()).width(500).height(150).colspan(2).pad(10).left().row();
+            mainTable.add(game.battleSystem.getLogScroll()).width(500).height(150).colspan(2).pad(10).left().row();
         }
 
-        // --- BARRE DE BOUTONS ---
         Table buttonTable = new Table();
 
         // 1. Bouton BOUGER
@@ -91,7 +93,10 @@ public class CombatState implements IGameState {
         moveBtn.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                if (game.battleSystem != null) game.battleSystem.enableMovePhase();
+                if (game.battleSystem != null) {
+                    game.battleSystem.enableMovePhase();
+                    hideSkillsTable();
+                }
             }
         });
         buttonTable.add(moveBtn).width(100).height(50).pad(5);
@@ -101,22 +106,49 @@ public class CombatState implements IGameState {
         attackBtn.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                if (game.battleSystem != null) game.battleSystem.startTargetSelection(new AttackAction());
+                if (game.battleSystem != null) {
+                    game.battleSystem.startTargetSelection(new AttackAction());
+                    hideSkillsTable();
+                }
             }
         });
         buttonTable.add(attackBtn).width(100).height(50).pad(5);
 
-        // 3. Bouton PASSER
+        // 3. Bouton ARTS
+        TextButton artsBtn = new TextButton("Arts", game.skin);
+        artsBtn.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (game.battleSystem != null) game.battleSystem.cancelSelection();
+                showSkillList(Skill.SkillType.ART);
+            }
+        });
+        buttonTable.add(artsBtn).width(100).height(50).pad(5);
+
+        // 4. Bouton MAGIE
+        TextButton magicBtn = new TextButton("Magie", game.skin);
+        magicBtn.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (game.battleSystem != null) game.battleSystem.cancelSelection();
+                showSkillList(Skill.SkillType.MAGIC);
+            }
+        });
+        buttonTable.add(magicBtn).width(100).height(50).pad(5);
+
+        // 5. Bouton PASSER
         TextButton passBtn = new TextButton("Passer", game.skin);
         passBtn.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                if (game.battleSystem != null) game.battleSystem.playerPassTurn();
+                if (game.battleSystem != null) {
+                    game.battleSystem.playerPassTurn();
+                    hideSkillsTable();
+                }
             }
         });
         buttonTable.add(passBtn).width(100).height(50).pad(5);
 
-        // 4. Bouton FUIR
         TextButton fleeBtn = new TextButton("Fuir", game.skin);
         fleeBtn.addListener(new ClickListener() {
             @Override
@@ -127,14 +159,86 @@ public class CombatState implements IGameState {
         });
         buttonTable.add(fleeBtn).width(100).height(50).pad(5);
 
-        table.add(buttonTable).bottom().padBottom(20);
-        game.combatStage.addActor(table);
+        mainTable.add(buttonTable).bottom().padBottom(20);
+        game.combatStage.addActor(mainTable);
+
+        skillsTable = new Table();
+        // On rajoute un fond pour être sûr que le tableau bloque les clics s'il y a des trous entre les boutons
+        // skillsTable.setBackground(game.skin.newDrawable("white", 0, 0, 0, 0.8f)); // Optionnel
+        skillsTable.setVisible(false);
+        game.combatStage.addActor(skillsTable);
+    }
+
+    private void hideSkillsTable() {
+        if (skillsTable != null) skillsTable.setVisible(false);
+    }
+
+    private void showSkillList(Skill.SkillType type) {
+        if (game.battleSystem == null || game.player == null) return;
+
+        skillsTable.clear();
+        skillsTable.setVisible(true);
+        skillsTable.setSize(300, 300);
+        skillsTable.setPosition(Gdx.graphics.getWidth()/2f - 150, Gdx.graphics.getHeight()/2f - 50);
+
+        String titleText = (type == Skill.SkillType.ART) ? "--- ARTS (PA) ---" : "--- MAGIE (PM) ---";
+        skillsTable.add(new Label(titleText, game.skin)).pad(10).row();
+
+        Array<Skill> skills = game.player.getSkillsByType(type);
+
+        if (skills.size == 0) {
+            skillsTable.add(new Label("Aucune compétence.", game.skin)).pad(10).row();
+        } else {
+            for (final Skill s : skills) {
+                String costText = (type == Skill.SkillType.ART) ? s.cost + " PA" : s.cost + " PM";
+                TextButton btn = new TextButton(s.getName() + " (" + costText + ")", game.skin);
+
+                if (!s.canExecute(game.player)) {
+                    btn.setColor(Color.GRAY);
+                    btn.setDisabled(true);
+                }
+
+                btn.addListener(new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        if (btn.isDisabled()) return;
+
+                        // IMPORTANT : On annule d'abord toute sélection en cours pour éviter les conflits
+                        game.battleSystem.cancelSelection();
+
+                        if (s.targetType == Skill.TargetType.SELF) {
+                            s.execute(game.player, game.player);
+                            game.battleSystem.passTurn();
+                        } else {
+                            game.battleSystem.startTargetSelection(s);
+                        }
+                        hideSkillsTable();
+                    }
+                });
+                skillsTable.add(btn).fillX().pad(2).row();
+            }
+        }
+
+        TextButton closeBtn = new TextButton("Fermer", game.skin);
+        closeBtn.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                hideSkillsTable();
+                // Si on ferme, on revient à l'état normal (au cas où)
+                if(game.battleSystem.getState() == BattleSystem.BattleState.PLAYER_SELECTING_TARGET) {
+                    game.battleSystem.cancelSelection();
+                }
+            }
+        });
+        skillsTable.add(closeBtn).padTop(10).width(80);
     }
 
     private void updateStatsLabel() {
         if (game.player != null && enemy != null && game.battleSystem != null) {
-            String stats = String.format("JOUEUR: %d/%d PV (ATB: %.0f%%)\nENNEMI: %d PV (ATB: %.0f%%)",
-                game.player.getPV(), game.player.getMaxPV(), game.battleSystem.getPlayerATB(),
+            String stats = String.format("JOUEUR: %d/%d PV | %d PA | %d PM (ATB: %.0f%%)\nENNEMI: %d PV (ATB: %.0f%%)",
+                game.player.getPV(), game.player.getMaxPV(),
+                game.player.getPA(), game.player.getPM(),
+                game.battleSystem.getPlayerATB(),
                 enemy.getPV(), game.battleSystem.getEnemyATB());
             statsLabel.setText(stats);
         }
@@ -143,10 +247,7 @@ public class CombatState implements IGameState {
     @Override
     public void exit() {
         game.combatStage.clear();
-
-        // IMPORTANT : On remet l'état normal en sortant du combat
         if (enemy != null) enemy.setInCombat(false);
-        // On réactive les contrôles de déplacement libre du joueur pour l'exploration
         if (game.player != null) game.player.setInputEnabled(true);
     }
 
@@ -154,36 +255,51 @@ public class CombatState implements IGameState {
     public void update(float delta) {
         if (game.battleSystem != null) {
             game.battleSystem.update(delta);
-
-            // MODIFICATION : On retire la gestion de la victoire ici car elle est
-            // gérée par le BattleSystem (clic pour quitter après les logs)
-
             if (game.battleSystem.getState() == BattleSystem.BattleState.GAME_OVER) {
                 game.changeState(game.startMenuState);
             }
         }
 
-        // --- MISE À JOUR DES ENTITÉS ---
         if (enemy != null) enemy.update(delta);
         if (game.player != null) game.player.update(delta);
 
         updateStatsLabel();
         game.combatStage.act(delta);
 
-        handleInput();
+        // Note : Plus besoin d'appeler handleInput() ici car on utilise InputProcessor
     }
 
     @Override
     public void handleInput() {
-        // Gestion du clic sur la grille
-        if (Gdx.input.justTouched()) {
-            Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
-            game.camera.unproject(touchPos);
-            if (game.battleSystem != null) {
-                game.battleSystem.handleGridClick(touchPos.x, touchPos.y);
-            }
-        }
+        // Vide ou supprimé, car géré par touchDown ci-dessous
     }
+
+    // --- IMPLEMENTATION INPUT PROCESSOR (Gestion Clics Grille) ---
+
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        // Cette méthode n'est appelée QUE si le Stage (UI) n'a pas traité le clic.
+        // Donc on est sûr que le joueur a cliqué sur la carte, pas sur un bouton.
+
+        Vector3 touchPos = new Vector3(screenX, screenY, 0);
+        game.camera.unproject(touchPos);
+
+        if (game.battleSystem != null) {
+            game.battleSystem.handleGridClick(touchPos.x, touchPos.y);
+        }
+
+        return true; // On a traité l'input
+    }
+
+    // Méthodes InputProcessor non utilisées (obligatoires à implémenter)
+    @Override public boolean keyDown(int keycode) { return false; }
+    @Override public boolean keyUp(int keycode) { return false; }
+    @Override public boolean keyTyped(char character) { return false; }
+    @Override public boolean touchUp(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
+    @Override public boolean mouseMoved(int screenX, int screenY) { return false; }
+    @Override public boolean scrolled(float amountX, float amountY) { return false; }
 
     @Override
     public void draw(SpriteBatch batch) {
@@ -215,14 +331,12 @@ public class CombatState implements IGameState {
         shapeRenderer.setProjectionMatrix(game.camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Zone de déplacement (BLEU)
         if (game.battleSystem.getState() == BattleSystem.BattleState.PLAYER_MOVING) {
             shapeRenderer.setColor(new Color(0, 0, 1, 0.3f));
             for (Vector2 tile : game.battleSystem.getValidMoveTiles()) {
                 shapeRenderer.rect(tile.x, tile.y, 1, 1);
             }
         }
-        // Zone d'attaque (ROUGE)
         else if (game.battleSystem.getState() == BattleSystem.BattleState.PLAYER_SELECTING_TARGET) {
             shapeRenderer.setColor(new Color(1, 0, 0, 0.3f));
             for (Vector2 tile : game.battleSystem.getValidAttackTiles()) {

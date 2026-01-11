@@ -194,7 +194,21 @@ public class BattleSystem {
 
     // --- INTERACTION JOUEUR ---
 
+    // NOUVEAU : Permet d'annuler une sélection en cours (bouger ou viser) pour changer d'avis
+    public void cancelSelection() {
+        if (state == BattleState.PLAYER_MOVING || state == BattleState.PLAYER_SELECTING_TARGET) {
+            state = BattleState.PLAYER_TURN;
+            pendingAction = null;
+            // On ne log pas forcément pour ne pas spammer, ou juste un feedback visuel
+        }
+    }
+
     public void enableMovePhase() {
+        // Si on visait une attaque, on annule la visée pour passer en mode mouvement
+        if (state == BattleState.PLAYER_SELECTING_TARGET) {
+            cancelSelection();
+        }
+
         if (state == BattleState.PLAYER_TURN && !hasMoved) {
             state = BattleState.PLAYER_MOVING;
             addLog("Déplacez-vous.");
@@ -246,12 +260,17 @@ public class BattleSystem {
     }
 
     public void startTargetSelection(BattleAction action) {
+        // Si on était en train de bouger ou de viser un autre sort, on reset pour prendre la nouvelle action
+        if (state == BattleState.PLAYER_MOVING || state == BattleState.PLAYER_SELECTING_TARGET) {
+            cancelSelection();
+        }
+
         if (state == BattleState.PLAYER_TURN) {
             if (action.canExecute(player)) {
                 this.pendingAction = action;
                 state = BattleState.PLAYER_SELECTING_TARGET;
                 addLog("Cible ?");
-            } else addLog("Pas assez de PA !");
+            } else addLog("Pas assez de ressources !");
         }
     }
 

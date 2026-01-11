@@ -1,7 +1,10 @@
 package com.github.LoiseauMael.RPG;
 
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
+import com.github.LoiseauMael.RPG.skills.Skill;
+import com.github.LoiseauMael.RPG.skills.SkillManager;
 
 /**
  * Classe de base pour toutes les entités capables de combattre (Joueur et Ennemis).
@@ -24,6 +27,9 @@ public abstract class Fighter extends Entity implements Disposable {
     protected int level;
     protected String nom;
 
+    // --- COMPÉTENCES ---
+    protected Array<Skill> knownSkills = new Array<>();
+
     public Fighter(float x, float y, int level, int exp, int PV, int PM, int PA,
                    int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP, Sprite sprite) {
         super(x, y, sprite);
@@ -41,6 +47,40 @@ public abstract class Fighter extends Entity implements Disposable {
         this.DEFM = DEFM;
         this.VIT = VIT;
         this.DEP = DEP;
+    }
+
+    // --- GESTION DES SKILLS ---
+
+    /**
+     * Vérifie dans le SkillManager si de nouveaux sorts sont disponibles pour la classe et le niveau actuels.
+     */
+    public void updateKnownSkills() {
+        if (this.nom == null) return;
+
+        Array<Skill> available = SkillManager.getSkillsFor(this.nom, this.level);
+
+        for(Skill s : available) {
+            boolean alreadyKnown = false;
+            for(Skill k : knownSkills) {
+                if(k.id.equals(s.id)) {
+                    alreadyKnown = true;
+                    break;
+                }
+            }
+
+            if(!alreadyKnown) {
+                knownSkills.add(s);
+                System.out.println(this.nom + " a appris : " + s.getName());
+            }
+        }
+    }
+
+    public Array<Skill> getSkillsByType(Skill.SkillType type) {
+        Array<Skill> filtered = new Array<>();
+        for(Skill s : knownSkills) {
+            if(s.type == type) filtered.add(s);
+        }
+        return filtered;
     }
 
     // --- GESTION DES POINTS DE VIE (PV) ---
@@ -76,7 +116,7 @@ public abstract class Fighter extends Entity implements Disposable {
         this.money += amount;
     }
 
-    // --- GESTION DE L'EXPÉRIENCE ET DES NIVEAUX (NOUVEAU) ---
+    // --- GESTION DE L'EXPÉRIENCE ET DES NIVEAUX ---
 
     /**
      * Ajoute de l'expérience et gère la montée de niveau si nécessaire.
@@ -84,7 +124,6 @@ public abstract class Fighter extends Entity implements Disposable {
     public void gainExp(int amount) {
         this.exp += amount;
 
-        // On vérifie si on a assez d'XP pour monter de niveau (boucle while pour multi-level)
         while (this.exp >= getExpForNextLevel()) {
             this.exp -= getExpForNextLevel();
             levelUp();
@@ -101,18 +140,36 @@ public abstract class Fighter extends Entity implements Disposable {
     protected void levelUp() {
         this.level++;
 
-        // Bonus de stats basiques à chaque niveau
-        this.maxPV += 10;
-        this.maxPM += 5;
-        this.FOR += 2;
-        this.DEF += 1;
-        this.VIT += 1;
+        // Application de l'augmentation (+10% ou +1 minimum)
+        this.maxPV = scaleStat(this.maxPV);
+        this.maxPM = scaleStat(this.maxPM);
+        this.maxPA = scaleStat(this.maxPA);
+
+        this.FOR = scaleStat(this.FOR);
+        this.DEF = scaleStat(this.DEF);
+        this.FORM = scaleStat(this.FORM);
+        this.DEFM = scaleStat(this.DEFM);
+        this.VIT = scaleStat(this.VIT);
 
         // Restauration complète (récompense)
         this.PV = this.maxPV;
         this.PM = this.maxPM;
+        this.PA = this.maxPA;
 
         System.out.println(this.nom + " passe au niveau " + this.level + " !");
+
+        updateKnownSkills();
+    }
+
+    /**
+     * Méthode utilitaire : Calcule la nouvelle valeur d'une stat.
+     * Augmente de 10% (arrondi à l'entier le plus proche).
+     * Si le résultat n'est pas supérieur à l'ancienne valeur, force +1.
+     */
+    private int scaleStat(int currentVal) {
+        int increased = (int) Math.round(currentVal * 1.1);
+        // Retourne le max entre "valeur calculée" et "valeur actuelle + 1"
+        return Math.max(currentVal + 1, increased);
     }
 
     // --- GETTERS ---
@@ -132,6 +189,7 @@ public abstract class Fighter extends Entity implements Disposable {
     public int getExp() { return exp; }
     public int getMoney() { return money; }
     public String getName() { return nom; }
+    public Array<Skill> getSkills() { return knownSkills; }
 
     // --- SETTERS ---
     public void setPV(int pv) { this.PV = Math.min(pv, maxPV); }

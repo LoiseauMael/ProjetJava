@@ -42,7 +42,11 @@ public class SaveManager {
         if (player.getEquippedRelic() != null) data.equippedRelic = createItemData(player.getEquippedRelic());
 
         // --- 4. Sauvegarde du Monde ---
-        data.currentMap = game.currentMapName;
+        // On sauvegarde le nom de la carte actuelle pour pouvoir la recharger au redémarrage
+        data.currentMapName = game.currentMapName;
+
+        // Gestion des ennemis morts (Boucle pour éviter l'erreur de type Array vs ArrayList)
+        data.deadEnemyIds.clear();
         if (game.deadEnemyIds != null) {
             for (Integer id : game.deadEnemyIds) {
                 data.deadEnemyIds.add(id);
@@ -51,7 +55,7 @@ public class SaveManager {
 
         FileHandle file = Gdx.files.local(SAVE_FILE);
         file.writeString(json.prettyPrint(data), false);
-        System.out.println("Partie sauvegardée : Map=" + data.currentMap + " Pos=(" + data.x + "," + data.y + ")");
+        System.out.println("Partie sauvegardée : Map=" + data.currentMapName + " Pos=(" + data.x + "," + data.y + ")");
     }
 
     public static void loadGame(Main game) {
@@ -68,8 +72,10 @@ public class SaveManager {
             game.player = SwordMan.create(0, 0);
         }
 
+        // Recharger les compétences (Important !)
+        game.player.updateKnownSkills();
+
         // 2. Application de la position
-        // C'est cette valeur que Main récupérera via player.get_positionX/Y()
         game.player.set_position(data.x, data.y);
 
         // 3. Restauration Stats
@@ -102,9 +108,13 @@ public class SaveManager {
         }
 
         // 6. Restauration du Monde
-        if (data.currentMap != null) {
-            game.currentMapName = data.currentMap;
+        // C'est ICI que se corrige le bug de l'écran noir/mauvaise map
+        if (data.currentMapName != null && !data.currentMapName.isEmpty()) {
+            game.currentMapName = data.currentMapName;
+        } else {
+            game.currentMapName = "map.tmx"; // Sécurité
         }
+
         game.deadEnemyIds.clear();
         if (data.deadEnemyIds != null) {
             for (Integer id : data.deadEnemyIds) {
@@ -112,10 +122,10 @@ public class SaveManager {
             }
         }
 
-        System.out.println("SaveManager chargé. Player Position: " + game.player.get_positionX() + "," + game.player.get_positionY());
+        System.out.println("SaveManager chargé. Map: " + game.currentMapName + " Pos: " + game.player.get_positionX() + "," + game.player.get_positionY());
     }
 
-    // --- Helpers ---
+    // --- Helpers inchangés ---
     private static SaveData.ItemData createItemData(Item item) {
         SaveData.ItemData data = new SaveData.ItemData();
         data.name = item.getName();

@@ -1,12 +1,14 @@
 {
 playerClass: Wizard
 level: 1
-money: 320
+exp: 40
+money: 520
 currentPV: 70
-currentPM: 50
-x: 13.316061
-y: 85.93221
-currentMap: map.tmx
+currentPM: 40
+x: 11.147886
+y: 84.886345
+currentMapName: map.tmx
+deadEnemyIds: [ 77 ]
 inventory: [
 	{
 		type: CONSUMABLE
@@ -16,46 +18,5 @@ inventory: [
 		count: 1
 		bonus1: 20
 	}
-	{
-		name: Ether
-		description: Rend 10 PM
-		count: 1
-	}
-	{
-		type: WEAPON
-		name: Vieux Bâton
-		description: Basique.
-		count: 1
-		bonus1: 1
-		bonus2: 5
-		requiredClass: Wizard
-	}
-	{
-		type: ARMOR
-		name: Petite Toge
-		description: Tissu.
-		count: 1
-		bonus1: 2
-		bonus2: 10
-		requiredClass: Wizard
-	}
 ]
-equippedWeapon: {
-	type: WEAPON
-	name: Vieux Bâton
-	description: Basique.
-	count: 1
-	bonus1: 1
-	bonus2: 5
-	requiredClass: Wizard
-}
-equippedArmor: {
-	type: ARMOR
-	name: Petite Toge
-	description: Tissu.
-	count: 1
-	bonus1: 2
-	bonus2: 10
-	requiredClass: Wizard
-}
 }

@@ -33,7 +33,9 @@ import com.github.LoiseauMael.RPG.battle.BattleSystem;
 import com.github.LoiseauMael.RPG.npcs.NPC;
 import com.github.LoiseauMael.RPG.items.*;
 import com.github.LoiseauMael.RPG.save.SaveManager;
+import com.github.LoiseauMael.RPG.skills.SkillManager;
 import com.github.LoiseauMael.RPG.utils.MapLoader;
+// import com.github.LoiseauMael.RPG.utils.ShopLoader; // Décommentez si vous utilisez le JSON
 import com.github.LoiseauMael.RPG.quests.QuestManager;
 import com.github.LoiseauMael.RPG.states.*;
 
@@ -92,6 +94,14 @@ public class Main extends ApplicationAdapter {
 
     @Override
     public void create() {
+        // --- 1. CHARGEMENT DES DONNÉES GLOBALES ---
+        // On charge tout ce qui est "fixe" au démarrage de l'appli.
+
+        SkillManager.loadSkills(); // Charge les sorts
+        initShop();                // Charge le magasin (Correction du bug)
+
+        // ------------------------------------------
+
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
         font = new BitmapFont();
@@ -171,14 +181,13 @@ public class Main extends ApplicationAdapter {
         camera.update();
     }
 
-    public void launchGame(boolean isWizard) {
-        if (isWizard) player = Wizard.create(0, 0);
-        else player = SwordMan.create(0, 0);
+    // --- INITIALISATION DU MAGASIN ---
+    // Appelée une seule fois au démarrage dans create()
+    public void initShop() {
+        // Si vous avez ShopLoader et le JSON qui marchent :
+        // ShopLoader.loadShop(this);
 
-        player.addMoney(500);
-        player.addItem(new HealthPotion("Potion de Vie", "Rend 20 PV", 20));
-        player.addItem(new ManaPotion("Ether", "Rend 10 PM", 10));
-
+        // Sinon, version manuelle (comme dans votre dernier fichier valide) :
         merchantInventory = new Array<>();
         merchantInventory.add(new ShopEntry(new HealthPotion("Potion Vie", "Rend 20 PV", 20), 20));
         merchantInventory.add(new ShopEntry(new ManaPotion("Ether", "Rend 10 PM", 10), 30));
@@ -192,21 +201,29 @@ public class Main extends ApplicationAdapter {
         merchantInventory.add(new ShopEntry(new Armor("Cotte de Mailles", "Lourd.", SwordMan.class, 15, 0), 800));
         merchantInventory.add(new ShopEntry(new Armor("Petite Toge", "Tissu.", Wizard.class, 2, 10), 80));
         merchantInventory.add(new ShopEntry(new Armor("Robe de Mage", "Tissu magique.", Wizard.class, 5, 20), 800));
+    }
+
+    public void launchGame(boolean isWizard) {
+        if (isWizard) player = Wizard.create(0, 0);
+        else player = SwordMan.create(0, 0);
+
+        player.addMoney(500);
+        player.addItem(new HealthPotion("Potion de Vie", "Rend 20 PV", 20));
+        player.addItem(new ManaPotion("Ether", "Rend 10 PM", 10));
+
+        // Note : On ne recharge PLUS le magasin ici, car il est fait dans create().
+        // Cela évite de le vider ou de le dupliquer.
 
         deadEnemyIds.clear();
         currentMapName = "map.tmx";
 
-        // 1. Charger la map (ne change PAS la position)
         loadMap(currentMapName);
 
-        // 2. Appliquer le spawn par défaut uniquement pour une NOUVELLE partie
         Vector2 spawn = MapLoader.getPlayerSpawn(map);
         player.set_position(spawn.x, spawn.y);
         camera.position.set(spawn.x, spawn.y, 0);
         camera.update();
     }
-
-    // --- CHARGEMENT DE CARTE (CORRIGÉ : NE TOUCHE PLUS AU JOUEUR) ---
 
     public void loadMap(String mapName) {
         if (map != null) map.dispose();
@@ -232,9 +249,6 @@ public class Main extends ApplicationAdapter {
             if(e instanceof Enemy) enemies.add((Enemy)e);
         }
         if(collisionSystem != null) collisionSystem.setNpcs(npcs);
-
-        // MODIFICATION MAJEURE : On a supprimé le bloc qui réinitialisait la position du joueur ici.
-        // loadMap ne s'occupe plus que du décor.
 
         changeState(explorationState);
     }
@@ -339,19 +353,20 @@ public class Main extends ApplicationAdapter {
             btnContinue.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    // 1. Charger la sauvegarde : Le joueur est créé et placé aux coordonnées du fichier JSON
+                    // Magasin est déjà chargé depuis create()
+
+                    // 1. Charger la sauvegarde
                     SaveManager.loadGame(Main.this);
 
-                    // 2. Charger la map : Le décor est construit autour, SANS toucher au joueur
+                    // 2. Charger la map
                     loadMap(currentMapName);
 
-                    // Sécurité : Recaler la caméra sur le joueur chargé
                     if(player != null) {
                         camera.position.set(player.get_positionX(), player.get_positionY(), 0);
                         camera.update();
                     }
 
-                    System.out.println("Partie chargée. Joueur en : " + player.get_positionX() + "," + player.get_positionY());
+                    System.out.println("Partie chargée.");
                 }
             });
             table.add(btnContinue).row();

@@ -10,31 +10,26 @@ public class SaveData {
     public float x, y;
 
     // État du monde
-    public String currentMap;
+    public String currentMapName; // RENOMMÉ pour correspondre à Main.java
     public ArrayList<Integer> deadEnemyIds = new ArrayList<>();
 
-    // Inventaire (Liste des objets dans le sac)
+    // Inventaire
     public ArrayList<ItemData> inventory = new ArrayList<>();
 
-    // Equipement actuel (Sauvegardé à part pour le rééquiper facilement)
+    // Equipement
     public ItemData equippedWeapon;
     public ItemData equippedArmor;
     public ItemData equippedRelic;
 
-    // Classe interne pour sauvegarder un item
     public static class ItemData {
-        public String type; // "WEAPON", "ARMOR", "RELIC", "CONSUMABLE"
-        public String specificType; // "HEALTH", "MANA", "ENERGY" (Pour savoir quelle potion recréer)
-
+        public String type;
+        public String specificType;
         public String name;
         public String description;
         public int count;
-
-        // On passe en float pour gérer les Reliques (ex: 1.2f) et on castera en int pour les Armes
         public float bonus1;
         public float bonus2;
-
-        public String requiredClass; // "Wizard", "SwordMan" ou null
+        public String requiredClass;
 
         public ItemData() {}
     }

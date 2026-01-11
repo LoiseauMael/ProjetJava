@@ -15,10 +15,13 @@ public class SwordMan extends Player {
             3,   // DEFM
             5,   // VIT
             4,   // DEP
-            "SwordmanSpriteSheet.png" // Assurez-vous que ce fichier existe, ou mettez "SwordMan.png"
+            "SwordmanSpriteSheet.png"
         );
 
         this.nom = "Guerrier";
+
+        // Initialisation des compétences (Arts) du niveau 1
+        updateKnownSkills();
     }
 
     // Factory method statique pour faciliter la création

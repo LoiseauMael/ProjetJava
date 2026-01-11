@@ -14,14 +14,14 @@ public class Wizard extends Player {
             10,  // DEFM
             6,   // VIT
             4,   // DEP
-            "WizardSpriteSheet.png" // Assurez-vous que ce fichier existe
+            "WizardSpriteSheet.png"
         );
 
         this.nom = "Mage";
 
-        // Le mage commence avec un sort
-        // Note: Assurez-vous d'avoir SpellAction importé ou disponible
-        // this.spells.add(new SpellAction("Boule de Feu", 10, 20));
+        // Initialisation des compétences (Sorts) du niveau 1
+        // Cela remplace l'ajout manuel : spells.add(...)
+        updateKnownSkills();
     }
 
     public static Wizard create(float x, float y) {
