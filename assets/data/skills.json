@@ -1,0 +1,54 @@
+[
+  {
+    "id": "fireball",
+    "name": "Boule de Feu",
+    "description": "Lance une boule de feu.",
+    "type": "MAGIC",
+    "effectType": "DAMAGE",
+    "targetType": "ENEMY",
+    "cost": 10,
+    "power": 20,
+    "range": 4,
+    "requiredLevel": 1,
+    "requiredClass": "Mage"
+  },
+  {
+    "id": "heal_light",
+    "name": "Soin Mineur",
+    "description": "Restaure des PV.",
+    "type": "MAGIC",
+    "effectType": "HEAL_HP",
+    "targetType": "SELF",
+    "cost": 15,
+    "power": 30,
+    "range": 0,
+    "requiredLevel": 2,
+    "requiredClass": "Mage"
+  },
+  {
+    "id": "slash_heavy",
+    "name": "Frappe Lourde",
+    "description": "Une attaque physique puissante.",
+    "type": "ART",
+    "effectType": "DAMAGE",
+    "targetType": "ENEMY",
+    "cost": 5,
+    "power": 1.5,
+    "range": 5,
+    "requiredLevel": 1,
+    "requiredClass": "Guerrier"
+  },
+  {
+    "id": "warcry",
+    "name": "Cri de Guerre",
+    "description": "Augmente la Force temporairement.",
+    "type": "ART",
+    "effectType": "BUFF_STR",
+    "targetType": "SELF",
+    "cost": 8,
+    "power": 5,
+    "range": 0,
+    "requiredLevel": 3,
+    "requiredClass": "Guerrier"
+  }
+]

@@ -1,0 +1,88 @@
+[
+  {
+    "type": "POTION_HP",
+    "name": "Potion de Vie",
+    "description": "Rend 20 PV",
+    "price": 20,
+    "value": 20
+  },
+  {
+    "type": "POTION_MP",
+    "name": "Ether",
+    "description": "Rend 10 PM",
+    "price": 30,
+    "value": 10
+  },
+  {
+    "type": "WEAPON",
+    "name": "Epée de Fer",
+    "description": "Lame standard.",
+    "price": 100,
+    "damage": 5,
+    "magic": 0,
+    "requiredClass": "Guerrier"
+  },
+  {
+    "type": "WEAPON",
+    "name": "Hache de Guerre",
+    "description": "Lourde et puissante.",
+    "price": 800,
+    "damage": 12,
+    "magic": 0,
+    "requiredClass": "Guerrier"
+  },
+  {
+    "type": "WEAPON",
+    "name": "Vieux Bâton",
+    "description": "Basique.",
+    "price": 100,
+    "damage": 1,
+    "magic": 5,
+    "requiredClass": "Mage"
+  },
+  {
+    "type": "WEAPON",
+    "name": "Sceptre Magique",
+    "description": "Canalise la magie.",
+    "price": 800,
+    "damage": 2,
+    "magic": 15,
+    "requiredClass": "Mage"
+  },
+  {
+    "type": "ARMOR",
+    "name": "Veste en Cuir",
+    "description": "Protection légère.",
+    "price": 80,
+    "defense": 5,
+    "magicDef": 2,
+    "requiredClass": "ANY"
+  },
+  {
+    "type": "ARMOR",
+    "name": "Cotte de Mailles",
+    "description": "Armure lourde.",
+    "price": 800,
+    "defense": 15,
+    "magicDef": 0,
+    "requiredClass": "Guerrier"
+  },
+  {
+    "type": "ARMOR",
+    "name": "Petite Toge",
+    "description": "Tissu simple.",
+    "price": 80,
+    "defense": 2,
+    "magicDef": 10,
+    "requiredClass": "Mage"
+  },
+  {
+    "type": "ARMOR",
+    "name": "Robe de Mage",
+    "description": "Tissu enchanté.",
+    "price": 800,
+    "defense": 5,
+    "magicDef": 20,
+    "requiredClass": "Mage"
+  }
+]
