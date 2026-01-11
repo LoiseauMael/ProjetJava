@@ -8,6 +8,7 @@ import com.github.LoiseauMael.RPG.Enemy;
 import com.github.LoiseauMael.RPG.Entity;
 import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.SwordMan;
+import com.github.LoiseauMael.RPG.npcs.MapExit;
 import com.github.LoiseauMael.RPG.npcs.NPC;
 
 public class ExplorationState implements IGameState {
@@ -20,17 +21,14 @@ public class ExplorationState implements IGameState {
 
     @Override
     public void enter() {
-        // Sécurité : recréer un joueur par défaut s'il n'existe pas
         if (game.player == null) {
             game.player = new SwordMan(10, 10);
         }
 
-        // Repositionner la caméra sur le joueur
         if (game.player != null) {
             game.camera.position.set(game.player.get_positionX(), game.player.get_positionY(), 0);
             game.camera.update();
         }
-        // On désactive les processeurs d'input spécifiques (comme les stages) pour laisser handleInput gérer le clavier
         Gdx.input.setInputProcessor(null);
     }
 
@@ -44,31 +42,57 @@ public class ExplorationState implements IGameState {
             game.player.update(delta);
         }
 
-        // 2. Mise à jour des entités (Ennemis, NPC)
+        // 2. Mise à jour des entités
         if (game.entities != null) {
-            for (Entity entity : game.entities) {
+            for (int i = 0; i < game.entities.size; i++) {
+                Entity entity = game.entities.get(i);
                 entity.update(delta);
 
-                // Détection automatique du combat avec les ennemis
+                // --- DÉTECTION COMBAT ---
                 if (entity instanceof Enemy) {
                     Enemy enemy = (Enemy) entity;
+
+                    // --- MODIFICATION ICI ---
+                    // On lance le combat seulement si les boites se touchent ET que le joueur N'EST PAS invincible
                     if (game.player.getBoundingBox().overlaps(enemy.getBoundingBox())) {
+
+                        // Si le joueur est en cooldown de fuite, on ignore la collision
+                        if (game.player.isInvincible()) {
+                            continue;
+                        }
+
+                        // Sinon, on lance le combat
                         game.combatState.setEnemy(enemy);
                         game.changeState(game.combatState);
+                        return;
+                    }
+                    // ------------------------
+                }
+
+                // --- DÉTECTION SORTIE DE CARTE (TRANSITION) ---
+                if (entity instanceof MapExit) {
+                    MapExit exit = (MapExit) entity;
+                    // On vérifie si le joueur marche sur la sortie
+                    if (game.player.getBoundingBox().overlaps(exit.getBoundingBox())) {
+
+                        System.out.println("Sortie détectée vers : " + exit.getTargetMap());
+                        game.deadEnemyIds.clear();
+                        game.loadMap(exit.getTargetMap(), exit.getTargetX(), exit.getTargetY());
+
                         return;
                     }
                 }
             }
         }
 
-        // 3. La caméra suit le joueur
+        // 3. Caméra
         if (game.player != null) {
             game.camera.position.x = game.player.get_positionX();
             game.camera.position.y = game.player.get_positionY();
             game.camera.update();
         }
 
-        // Touche ECHAP pour le menu
+        // Menu Pause
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.changeState(game.menuState);
         }
@@ -87,7 +111,7 @@ public class ExplorationState implements IGameState {
         batch.setProjectionMatrix(game.camera.combined);
         batch.begin();
 
-        // Tri des entités par Y pour la profondeur visuelle
+        // Tri pour l'affichage (les entités plus bas sont devant)
         if (game.entities != null) {
             game.entities.sort((e1, e2) -> Float.compare(e2.get_positionY(), e1.get_positionY()));
             for (Entity entity : game.entities) {
@@ -103,31 +127,21 @@ public class ExplorationState implements IGameState {
 
     @Override
     public void handleInput() {
-        // Détection de l'interaction avec la touche F
         if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
             interactWithNearbyNPC();
         }
     }
 
-    /**
-     * Cherche un NPC à proximité et lance le dialogue s'il y en a un.
-     */
     private void interactWithNearbyNPC() {
-        float interactionRange = 1.8f; // Distance de détection
-
+        float interactionRange = 1.8f;
         for (NPC npc : game.npcs) {
-            // Calcul de la distance entre le joueur et le PNJ
             float dist = Vector2.dst(game.player.get_positionX(), game.player.get_positionY(),
                 npc.get_positionX(), npc.get_positionY());
-
             if (dist <= interactionRange) {
-                // Le NPC se tourne vers le joueur
                 npc.lookAt(game.player);
-
-                // Préparation et lancement de l'état de dialogue
                 game.dialogueState.setNPC(npc);
                 game.changeState(game.dialogueState);
-                break; // On ne parle qu'à un seul PNJ à la fois
+                break;
             }
         }
     }

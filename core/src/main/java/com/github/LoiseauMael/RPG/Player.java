@@ -24,8 +24,13 @@ public abstract class Player extends Fighter implements Disposable {
     // --- Contrôle des entrées ---
     private boolean inputEnabled = true;
 
+    // --- AJOUT : GESTION COOLDOWN FUITE ---
+    private boolean isInvincible = false;
+    private float invincibilityTimer = 0f;
+    private final float COOLDOWN_TIME = 2.0f; // 2 secondes d'invincibilité
+    // ---------------------------------------
+
     public Player(float x, float y, int PV, int PM, int PA, int FOR, int DEF, int FORM, int DEFM, int VIT, int DEP, String texturePath) {
-        // MODIFICATION ICI : Le 3ème argument est passé à 1 (Niveau de départ)
         super(x, y, 1, 0, PV, PM, PA, FOR, DEF, FORM, DEFM, VIT, DEP, new Sprite(new Texture(Gdx.files.internal(texturePath))));
 
         Texture t = this.getSprite().getTexture();
@@ -39,25 +44,37 @@ public abstract class Player extends Fighter implements Disposable {
         this.inventory = new Array<>();
     }
 
-    // --- GESTION INPUT ---
+    // --- AJOUT : MÉTHODES POUR L'INVINCIBILITÉ ---
+
+    // Appelle cette fonction juste après avoir quitté le combat par "Fuir"
+    public void startFleeInvincibility() {
+        this.isInvincible = true;
+        this.invincibilityTimer = COOLDOWN_TIME;
+        // Effet visuel : on rend le sprite semi-transparent
+        this.getSprite().setAlpha(0.5f);
+        System.out.println("Invincibilité temporaire activée !");
+    }
+
+    public boolean isInvincible() {
+        return isInvincible;
+    }
+    // ---------------------------------------------
+
     public void setInputEnabled(boolean enabled) {
         this.inputEnabled = enabled;
         if (!enabled) {
-            // Stop net le mouvement si on désactive les inputs
             this.velocityX = 0;
             this.velocityY = 0;
         }
     }
 
     public void handleInput() {
-        // Si les inputs sont désactivés (Combat), on ne fait rien
         if (!inputEnabled) {
             this.velocityX = 0;
             this.velocityY = 0;
             return;
         }
 
-        // Sinon (Exploration), comportement normal
         this.velocityX = 0;
         this.velocityY = 0;
         float speed = 4.0f;
@@ -80,8 +97,7 @@ public abstract class Player extends Fighter implements Disposable {
         }
     }
 
-    // --- GESTION OBJETS ---
-
+    // --- GESTION OBJETS (Pas de changement) ---
     public void addItem(Item item) {
         for (Item i : inventory) {
             if (i.getName().equals(item.getName())) {
@@ -143,6 +159,16 @@ public abstract class Player extends Fighter implements Disposable {
 
     @Override
     public void update(float delta) {
+        // 1. Gestion du Timer d'invincibilité
+        if (isInvincible) {
+            invincibilityTimer -= delta;
+            if (invincibilityTimer <= 0) {
+                isInvincible = false;
+                invincibilityTimer = 0;
+                this.getSprite().setAlpha(1.0f); // Retour à l'opacité normale
+            }
+        }
+
         handleInput();
         super.update(delta);
         updateAnimation(delta);

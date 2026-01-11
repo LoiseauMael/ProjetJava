@@ -41,13 +41,25 @@ public class StartMenuState implements IGameState {
             btnContinue.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    // CORRECTION ICI :
-                    // 1. On charge les données du jeu (Player + Map Name + Dead Enemies)
+                    // 1. On charge les données du jeu depuis le fichier JSON
+                    // (Cela met à jour game.player avec la position X/Y sauvegardée)
                     SaveManager.loadGame(game);
 
-                    // 2. On charge physiquement la map et les entités
-                    // (Cela change aussi l'état vers ExplorationState automatiquement)
+                    // 2. IMPORTANT : On sauvegarde temporairement la position chargée
+                    // car l'appel suivant à game.loadMap() va remettre le joueur au point de spawn par défaut (Tiled).
+                    float savedX = game.player.get_positionX();
+                    float savedY = game.player.get_positionY();
+
+                    // 3. On charge physiquement la map et les entités
+                    // (Cela change aussi l'état vers ExplorationState, mais réinitialise la position du joueur)
                     game.loadMap(game.currentMapName);
+
+                    // 4. On réapplique la position sauvegardée pour écraser le spawn par défaut
+                    game.player.set_position(savedX, savedY);
+
+                    // 5. On met à jour la caméra immédiatement pour éviter un saut d'image
+                    game.camera.position.set(savedX, savedY, 0);
+                    game.camera.update();
                 }
             });
             table.add(btnContinue).row();

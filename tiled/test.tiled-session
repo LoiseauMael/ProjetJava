@@ -11,12 +11,34 @@
     ],
     "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
     "fileStates": {
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/foret.tmx": {
+            "expandedObjectLayers": [
+                6
+            ],
+            "scale": 2.165208333333333,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 226.30616761281632,
+                "y": 170.42239969210047
+            }
+        },
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/forêt.tmx": {
+            "scale": 2.165208333333333,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 240.16164726258057,
+                "y": 149.40825555662468
+            }
+        },
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx": {
+            "expandedObjectLayers": [
+                17
+            ],
             "scale": 1.5,
             "selectedLayer": 10,
             "viewCenter": {
-                "x": 328,
-                "y": 186.66666666666663
+                "x": 287.3333333333333,
+                "y": 1446.6666666666665
             }
         },
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx": {
@@ -107,8 +129,17 @@
             "scaleInEditor": 1
         },
         "tuiles/house_details.tsx": {
+            "dynamicWrapping": false,
             "scaleInDock": 1,
             "scaleInEditor": 1
+        },
+        "tuiles/sans titr.tmx": {
+            "scale": 2.165208333333333,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 240.16164726258057,
+                "y": 159.79986529394785
+            }
         },
         "tuiles/test.tmx": {
             "scale": 3,
@@ -131,18 +162,18 @@
     "project": "test.tiled-project",
     "property.type": "string",
     "recentFiles": [
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/foret.tmx",
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/forêt.tmx",
+        "tuiles/house_details.tsx",
+        "tuiles/test.tmx",
+        "map/exterior.tsx",
+        "map/map.tmx",
+        "tuiles/sans titr.tmx",
+        "tuiles/exterior.tsx",
+        "tuiles/ground_grass_details.tsx",
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx",
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
-        "map/map.tmx",
-        "map/exterior.tsx",
-        "tuiles/ground_grass_details.tsx",
-        "map/test.tmx",
-        "tuiles/test.tmx",
-        "tuiles/exterior.tsx",
-        "tuiles/house_details.tsx",
-        "tuiles/Trees_animation.tsx",
-        "map/nul.tmx",
-        "tuiles/Exterior.tmx"
+        "map/test.tmx"
     ],
     "tileset.lastUsedFilter": "Fichiers de jeu de tuiles Tiled (*.tsx *.xml)",
     "tileset.lastUsedFormat": "tsx",

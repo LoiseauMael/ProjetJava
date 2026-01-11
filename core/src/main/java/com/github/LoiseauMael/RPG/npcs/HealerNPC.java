@@ -1,17 +1,26 @@
 package com.github.LoiseauMael.RPG.npcs;
 
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.github.LoiseauMael.RPG.Entity;
 
 public class HealerNPC extends NPC {
 
-    public HealerNPC(float x, float y, String[] dialogues) {
-        // Chargement de la texture (assurez-vous que le fichier est bien dans assets/)
+    public HealerNPC(float x, float y, String texturePath, String[] dialogues) {
+        // On passe le chemin de la texture au constructeur parent (NPC)
+        // Valeur par défaut de sécurité si texturePath est null
         super(x, y, "Guérisseur", dialogues,
-            new Sprite(new TextureRegion(new Texture("HealerSpriteSheet.png"), 0, 0, 16, 16)));
+            (texturePath != null ? texturePath : "assets/HealerSpriteSheet.png"));
     }
 
-    // PLUS BESOIN de surcharger update() ni draw() !
-    // Entity.java s'occupe de mettre à jour la position et de dessiner le sprite centré.
+    // Logique spécifique : interaction pour soigner
+    @Override
+    public boolean advanceDialogue() {
+        boolean hasMore = super.advanceDialogue();
+
+        // Si le dialogue est fini, on soigne le joueur (Exemple simple)
+        if (!hasMore) {
+            // Tu pourras ajouter ici la logique : game.player.healWrapper();
+            System.out.println("Le guérisseur a soigné vos blessures !");
+        }
+        return hasMore;
+    }
 }

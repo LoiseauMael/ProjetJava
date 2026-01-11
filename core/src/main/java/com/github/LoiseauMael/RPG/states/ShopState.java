@@ -10,6 +10,7 @@ import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.Main.ShopEntry;
 import com.github.LoiseauMael.RPG.items.Armor;
 import com.github.LoiseauMael.RPG.items.Equipment;
+import com.github.LoiseauMael.RPG.items.Relic;
 import com.github.LoiseauMael.RPG.items.Weapon;
 
 public class ShopState implements IGameState {
@@ -29,66 +30,54 @@ public class ShopState implements IGameState {
         game.shopTable.clear();
         game.shopTable.defaults().pad(5);
 
-        // --- EN-TÊTE ---
-        Label title = new Label("--- ECHOPPE DU VILLAGE ---", game.skin);
-        title.setFontScale(1.5f); // Titre un peu plus gros (+50%)
+        // Titre
+        Label title = new Label("--- ECHOPPE ---", game.skin);
+        title.setFontScale(1.5f);
         title.setColor(Color.GOLD);
         game.shopTable.add(title).colspan(3).padBottom(20).row();
 
-        // --- ARGENT DU JOUEUR ---
-        Label moneyLabel = new Label("Votre Bourse : " + game.player.getMoney() + " Or", game.skin);
-        moneyLabel.setFontScale(1.3f); // Texte agrandi (+30%)
+        // Argent
+        Label moneyLabel = new Label("Bourse : " + game.player.getMoney() + " Or", game.skin);
+        moneyLabel.setFontScale(1.3f);
         moneyLabel.setColor(Color.YELLOW);
         game.shopTable.add(moneyLabel).colspan(3).padBottom(15).row();
 
-        // --- LISTE DES ARTICLES (SCROLLABLE) ---
+        // Liste
         Table itemsTable = new Table();
         itemsTable.top();
 
         if (game.merchantInventory != null) {
             for (final ShopEntry entry : game.merchantInventory) {
-
-                // 1. Préparation des infos : Nom + Stats uniquement (Pas de description)
                 String itemName = entry.item.getName();
-                String statsText = "";
+                String infoText = "";
 
+                // --- AFFICHAGE DES STATS ---
                 if (entry.item instanceof Weapon) {
                     Weapon w = (Weapon) entry.item;
-                    if (w.bonusFOR > 0) statsText += " [FOR+" + w.bonusFOR + "]";
-                    if (w.bonusFORM > 0) statsText += " [MAG+" + w.bonusFORM + "]";
+                    if (w.bonusFOR > 0) infoText += " [ATK+" + w.bonusFOR + "]";
+                    if (w.bonusFORM > 0) infoText += " [MAG+" + w.bonusFORM + "]";
                 } else if (entry.item instanceof Armor) {
                     Armor a = (Armor) entry.item;
-                    if (a.bonusDEF > 0) statsText += " [DEF+" + a.bonusDEF + "]";
-                    if (a.bonusDEFM > 0) statsText += " [M.DEF+" + a.bonusDEFM + "]";
+                    if (a.bonusDEF > 0) infoText += " [DEF+" + a.bonusDEF + "]";
+                    if (a.bonusDEFM > 0) infoText += " [M.DEF+" + a.bonusDEFM + "]";
+                } else if (entry.item instanceof Relic) {
+                    Relic r = (Relic) entry.item;
+                    if (r.damageMultiplier > 1.0f) infoText += " [DMG+" + (int)((r.damageMultiplier-1)*100) + "%]";
+                    if (r.defenseMultiplier > 1.0f) infoText += " [DEF+" + (int)((r.defenseMultiplier-1)*100) + "%]";
                 } else {
-                    // Pour les potions, on peut mettre une stat courte si besoin,
-                    // ou laisser juste le nom si la description est supprimée.
-                    // Ici on laisse vide ou on met un effet simple si vous avez des getters sur les potions.
+                    infoText = " (" + entry.item.getDescription() + ")";
                 }
 
-                // --- MODIFICATION : TEXTE AGRANDI ET SANS DESCRIPTION ---
-
-                // Label Nom + Stats concaténés
-                Label nameLabel = new Label(itemName + " " + statsText, game.skin);
-                nameLabel.setFontScale(1.3f); // Agrandissement du texte (+30%)
-
-                // Couleur différente pour l'équipement
+                Label nameLabel = new Label(itemName + infoText, game.skin);
+                nameLabel.setFontScale(1.2f);
                 if (entry.item instanceof Equipment) nameLabel.setColor(Color.CYAN);
 
-                // On augmente la largeur de la cellule car le texte est plus gros
-                itemsTable.add(nameLabel).width(450).left().padBottom(10);
+                itemsTable.add(nameLabel).width(500).left().padBottom(10);
+                itemsTable.add(new Label(entry.price + " Or", game.skin)).width(80).center().padBottom(10);
 
-                // Label Prix
-                Label priceLabel = new Label(entry.price + " Or", game.skin);
-                priceLabel.setFontScale(1.3f); // Agrandissement du prix
-                itemsTable.add(priceLabel).width(100).center().padBottom(10);
-
-                // 2. Bouton Acheter
                 TextButton buyBtn = new TextButton("Acheter", game.skin);
-                // On agrandit aussi un peu le texte du bouton
-                buyBtn.getLabel().setFontScale(1.1f);
 
-                // Vérifie la classe
+                // Vérification si équipable
                 boolean canEquip = true;
                 if (entry.item instanceof Equipment) {
                     canEquip = ((Equipment)entry.item).canEquip(game.player);
@@ -100,15 +89,12 @@ public class ShopState implements IGameState {
                     buyBtn.setColor(Color.GRAY);
                 } else if (game.player.getMoney() < entry.price) {
                     buyBtn.setColor(Color.FIREBRICK);
-                } else {
-                    buyBtn.setColor(Color.WHITE);
                 }
 
                 buyBtn.addListener(new ClickListener() {
                     @Override
                     public void clicked(InputEvent event, float x, float y) {
                         if (buyBtn.isDisabled()) return;
-
                         if (game.player.getMoney() >= entry.price) {
                             game.player.addMoney(-entry.price);
                             game.player.addItem(entry.item);
@@ -117,50 +103,23 @@ public class ShopState implements IGameState {
                     }
                 });
                 itemsTable.add(buyBtn).width(100).padBottom(10).row();
-
-                // Ligne de séparation fine
-                Image sep = new Image(game.skin.newDrawable("white", Color.DARK_GRAY));
-                itemsTable.add(sep).height(1).colspan(3).fillX().padBottom(5).row();
             }
         }
 
-        // Ajout du tableau d'items dans un ScrollPane
         ScrollPane scroll = new ScrollPane(itemsTable, game.skin);
-        scroll.setFadeScrollBars(false);
-        game.shopTable.add(scroll).width(700).height(400).colspan(3).row();
+        game.shopTable.add(scroll).width(750).height(400).colspan(3).row();
 
-        // --- BOUTON QUITTER ---
-        TextButton closeBtn = new TextButton("Quitter", game.skin);
-        closeBtn.getLabel().setFontScale(1.2f);
+        TextButton closeBtn = new TextButton("Fermer", game.skin);
         closeBtn.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {
                 game.changeState(game.explorationState);
             }
         });
-        game.shopTable.add(closeBtn).width(200).height(50).padTop(15).colspan(3);
+        game.shopTable.add(closeBtn).width(200).height(50).padTop(10).colspan(3);
     }
 
-    @Override
-    public void update(float delta) {
-        game.shopStage.act(delta);
-    }
-
-    @Override
-    public void draw(SpriteBatch batch) {
-        // Dessine le jeu en arrière-plan
-        game.explorationState.draw(batch);
-        game.shopStage.draw();
-    }
-
-    @Override
-    public void handleInput() {
-        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE)) {
-            game.changeState(game.explorationState);
-        }
-    }
-
-    @Override
-    public void exit() {
-        game.shopTable.clear();
-    }
+    @Override public void update(float delta) { game.shopStage.act(delta); }
+    @Override public void draw(SpriteBatch batch) { game.explorationState.draw(batch); game.shopStage.draw(); }
+    @Override public void handleInput() { if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE)) game.changeState(game.explorationState); }
+    @Override public void exit() { game.shopTable.clear(); }
 }

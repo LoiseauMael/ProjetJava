@@ -32,6 +32,11 @@ public class CombatState implements IGameState, InputProcessor {
     // UI Elements
     private Table skillsTable;
 
+    // --- CORRECTION COLLISIONS ---
+    // Variables pour sauvegarder les positions sûres (avant le combat)
+    private Vector2 playerSafePosition = new Vector2();
+    private Vector2 enemySafePosition = new Vector2();
+
     public CombatState(Main game) {
         this.game = game;
         this.shapeRenderer = new ShapeRenderer();
@@ -48,9 +53,20 @@ public class CombatState implements IGameState, InputProcessor {
             return;
         }
 
+        // --- SAUVEGARDE DES POSITIONS SÛRES ---
+        // 1. Joueur
+        if (game.player != null) {
+            playerSafePosition.set(game.player.get_positionX(), game.player.get_positionY());
+        }
+        // 2. Ennemi (AJOUTÉ)
+        // On sauvegarde sa position avant de le déplacer pour la grille tactique
+        enemySafePosition.set(enemy.get_positionX(), enemy.get_positionY());
+
         enemy.setInCombat(true);
         game.player.setInputEnabled(false);
 
+        // Positionnement tactique sur la grille (début du combat)
+        // C'est ICI que l'ennemi peut être poussé dans un mur
         if (game.player.getGridDistance(enemy) < 3) {
             int playerX = game.player.getTileX();
             int enemyX = enemy.getTileX();
@@ -62,9 +78,7 @@ public class CombatState implements IGameState, InputProcessor {
         game.battleSystem = new BattleSystem(game, game.player, this.enemy);
         setupCombatUI();
 
-        // CORRECTION IMPORTANTE : InputMultiplexer
-        // L'UI (combatStage) reçoit les clics en premier. S'il ne les traite pas (clic à côté des boutons),
-        // alors 'this' (CombatState) les reçoit pour gérer la grille.
+        // Gestion des inputs (UI en priorité, puis Grille)
         InputMultiplexer multiplexer = new InputMultiplexer();
         multiplexer.addProcessor(game.combatStage);
         multiplexer.addProcessor(this);
@@ -149,11 +163,27 @@ public class CombatState implements IGameState, InputProcessor {
         });
         buttonTable.add(passBtn).width(100).height(50).pad(5);
 
+        // 6. Bouton FUIR
         TextButton fleeBtn = new TextButton("Fuir", game.skin);
         fleeBtn.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 BattleSystem.addLog("Fuite !");
+
+                // --- LOGIQUE AJOUTÉE : RÉGÉNÉRATION DU MONSTRE ---
+                if (enemy != null) {
+                    enemy.setPV(enemy.getMaxPV());
+                    enemy.setPM(enemy.getMaxPM());
+                    enemy.setPA(enemy.getMaxPA());
+                }
+                // -------------------------------------------------
+
+                // --- AJOUT : Activation du timer d'invincibilité ---
+                if (game.player != null) {
+                    game.player.startFleeInvincibility();
+                }
+                // ---------------------------------------------------
+
                 game.changeState(game.explorationState);
             }
         });
@@ -163,8 +193,6 @@ public class CombatState implements IGameState, InputProcessor {
         game.combatStage.addActor(mainTable);
 
         skillsTable = new Table();
-        // On rajoute un fond pour être sûr que le tableau bloque les clics s'il y a des trous entre les boutons
-        // skillsTable.setBackground(game.skin.newDrawable("white", 0, 0, 0, 0.8f)); // Optionnel
         skillsTable.setVisible(false);
         game.combatStage.addActor(skillsTable);
     }
@@ -203,7 +231,6 @@ public class CombatState implements IGameState, InputProcessor {
                     public void clicked(InputEvent event, float x, float y) {
                         if (btn.isDisabled()) return;
 
-                        // IMPORTANT : On annule d'abord toute sélection en cours pour éviter les conflits
                         game.battleSystem.cancelSelection();
 
                         if (s.targetType == Skill.TargetType.SELF) {
@@ -224,7 +251,6 @@ public class CombatState implements IGameState, InputProcessor {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 hideSkillsTable();
-                // Si on ferme, on revient à l'état normal (au cas où)
                 if(game.battleSystem.getState() == BattleSystem.BattleState.PLAYER_SELECTING_TARGET) {
                     game.battleSystem.cancelSelection();
                 }
@@ -247,14 +273,34 @@ public class CombatState implements IGameState, InputProcessor {
     @Override
     public void exit() {
         game.combatStage.clear();
-        if (enemy != null) enemy.setInCombat(false);
-        if (game.player != null) game.player.setInputEnabled(true);
+
+        // --- RESTAURATION DE LA POSITION SÛRE DU JOUEUR ---
+        if (game.player != null) {
+            game.player.setInputEnabled(true);
+            game.player.set_position(playerSafePosition.x, playerSafePosition.y);
+        }
+
+        // --- RESTAURATION DE LA POSITION SÛRE DE L'ENNEMI (AJOUTÉ) ---
+        if (enemy != null) {
+            enemy.setInCombat(false);
+            // On replace l'ennemi là où il était avant le combat
+            enemy.set_position(enemySafePosition.x, enemySafePosition.y);
+        }
     }
 
     @Override
     public void update(float delta) {
+        // --- LOGIQUE GAME OVER AJOUTÉE ---
+        if (game.player.getPV() <= 0) {
+            // Retour au menu principal si le joueur est mort
+            game.changeState(game.startMenuState);
+            return;
+        }
+        // ---------------------------------
+
         if (game.battleSystem != null) {
             game.battleSystem.update(delta);
+            // Vérification redondante mais utile si le BattleSystem gère aussi l'état
             if (game.battleSystem.getState() == BattleSystem.BattleState.GAME_OVER) {
                 game.changeState(game.startMenuState);
             }
@@ -265,22 +311,16 @@ public class CombatState implements IGameState, InputProcessor {
 
         updateStatsLabel();
         game.combatStage.act(delta);
-
-        // Note : Plus besoin d'appeler handleInput() ici car on utilise InputProcessor
     }
 
     @Override
     public void handleInput() {
-        // Vide ou supprimé, car géré par touchDown ci-dessous
     }
 
     // --- IMPLEMENTATION INPUT PROCESSOR (Gestion Clics Grille) ---
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        // Cette méthode n'est appelée QUE si le Stage (UI) n'a pas traité le clic.
-        // Donc on est sûr que le joueur a cliqué sur la carte, pas sur un bouton.
-
         Vector3 touchPos = new Vector3(screenX, screenY, 0);
         game.camera.unproject(touchPos);
 
@@ -288,10 +328,9 @@ public class CombatState implements IGameState, InputProcessor {
             game.battleSystem.handleGridClick(touchPos.x, touchPos.y);
         }
 
-        return true; // On a traité l'input
+        return true;
     }
 
-    // Méthodes InputProcessor non utilisées (obligatoires à implémenter)
     @Override public boolean keyDown(int keycode) { return false; }
     @Override public boolean keyUp(int keycode) { return false; }
     @Override public boolean keyTyped(char character) { return false; }
