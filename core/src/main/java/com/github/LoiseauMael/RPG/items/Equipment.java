@@ -1,19 +1,32 @@
 package com.github.LoiseauMael.RPG.items;
 
-import com.github.LoiseauMael.RPG.Player;
+import com.github.LoiseauMael.RPG.model.entities.Player;
 
+/**
+ * Classe abstraite pour les objets équipables (Armes, Armures, Reliques).
+ * <p>
+ * Gère les restrictions de classe (ex: Une épée lourde réservée au Guerrier).
+ * Lorsqu'on "utilise" un équipement depuis l'inventaire, on tente de l'équiper.
+ */
 public abstract class Equipment extends Item {
 
-    // Si null, tout le monde peut l'équiper. Sinon, seul ce type de joueur (ou sous-classe) le peut.
+    /** Classe requise pour équiper cet objet (null = aucune restriction). */
     protected Class<? extends Player> requiredClass;
 
+    /**
+     * @param name Nom de l'équipement.
+     * @param description Description.
+     * @param requiredClass Classe du joueur requise (ex: Wizard.class). Si null, tout le monde peut l'équiper.
+     */
     public Equipment(String name, String description, Class<? extends Player> requiredClass) {
         super(name, description);
         this.requiredClass = requiredClass;
     }
 
     /**
-     * Vérifie si le joueur passé en paramètre a la bonne classe pour cet objet.
+     * Vérifie si le joueur possède la classe requise pour cet équipement.
+     * @param p Le joueur.
+     * @return true si l'équipement est compatible.
      */
     public boolean canEquip(Player p) {
         if (requiredClass == null) return true;
@@ -24,8 +37,7 @@ public abstract class Equipment extends Item {
     public boolean use(Player player) {
         if (canEquip(player)) {
             player.equip(this);
-            // On renvoie false pour ne pas "consommer" (détruire) l'objet comme une potion.
-            // Il reste dans l'inventaire mais est marqué comme équipé via la référence dans Player.
+            // On renvoie false pour ne pas "consommer" (détruire) l'objet.
             return false;
         } else {
             System.out.println("Impossible d'équiper : Mauvaise classe !");

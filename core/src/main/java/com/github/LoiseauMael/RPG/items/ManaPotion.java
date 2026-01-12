@@ -1,7 +1,13 @@
 package com.github.LoiseauMael.RPG.items;
 
-import com.github.LoiseauMael.RPG.Player;
+import com.github.LoiseauMael.RPG.model.entities.Player;
 
+/**
+ * Potion de Mana (PM).
+ * <p>
+ * Restaure une quantité fixe de Points de Mana.
+ * Utile pour les Mages ou pour lancer des compétences coûteuses.
+ */
 public class ManaPotion extends Item {
 
     private int amount;
@@ -13,18 +19,14 @@ public class ManaPotion extends Item {
 
     @Override
     public boolean use(Player player) {
-        // On vérifie si le joueur a besoin de mana (optionnel, mais mieux)
         if (player.getPM() < player.getMaxPM()) {
-
-            // On utilise la nouvelle méthode regenPM
             player.regenPM(amount);
-
             System.out.println("Vous utilisez " + getName() + " et recuperez " + amount + " PM.");
-            return true; // Renvoie VRAI : L'objet a été utilisé et doit être supprimé
+            return true;
         }
 
         System.out.println("PM deja au max !");
-        return false; // Renvoie FAUX : L'objet n'est pas utilisé (pas supprimé)
+        return false;
     }
 
     public int getAmount() {

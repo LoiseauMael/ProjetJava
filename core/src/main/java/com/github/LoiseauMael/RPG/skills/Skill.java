@@ -1,28 +1,57 @@
 package com.github.LoiseauMael.RPG.skills;
 
-import com.github.LoiseauMael.RPG.Fighter;
+import com.github.LoiseauMael.RPG.model.entities.Fighter;
 import com.github.LoiseauMael.RPG.battle.BattleAction;
 import com.github.LoiseauMael.RPG.battle.BattleSystem;
 
+/**
+ * Représente une compétence (Sort ou Art Martial).
+ * <p>
+ * Hérite de {@link BattleAction} pour s'intégrer dans le système de combat tour par tour.
+ * Les données de la compétence sont généralement chargées depuis un fichier JSON.
+ */
 public class Skill extends BattleAction {
 
-    public enum SkillType { ART, MAGIC }
-    public enum EffectType { DAMAGE, HEAL_HP, HEAL_MP, HEAL_PA, BUFF_STR, BUFF_DEF }
-    public enum TargetType { SELF, ENEMY }
+    public enum SkillType {
+        ART,  // Compétence physique (utilise PA, basé sur FOR)
+        MAGIC // Compétence magique (utilise PM, basé sur FORM)
+    }
 
-    // Données chargées depuis le JSON
+    public enum EffectType {
+        DAMAGE,    // Inflige des dégâts
+        HEAL_HP,   // Rend des PV
+        HEAL_MP,   // Rend des PM
+        HEAL_PA,   // Rend des PA
+        BUFF_STR,  // Augmente la Force
+        BUFF_DEF   // Augmente la Défense
+    }
+
+    public enum TargetType {
+        SELF,  // Cible le lanceur (Soins, Buffs)
+        ENEMY  // Cible l'adversaire (Attaques)
+    }
+
+    // --- Données mappées depuis le JSON ---
     public String id;
     public SkillType type;
     public EffectType effectType;
     public TargetType targetType;
-    public int cost; // Coût en PA (Art) ou PM (Magie)
-    public float power; // Dégâts (fixe ou multiplicateur), Soin, ou valeur de Buff
+
+    /** Coût en ressource (PA pour ART, PM pour MAGIC). */
+    public int cost;
+
+    /** Puissance de l'effet (Dégâts bruts, Multiplicateur, ou Montant de soin). */
+    public float power;
+
     public int requiredLevel;
-    public String requiredClass; // "Guerrier", "Mage", ou "ANY"
+    /** Classe requise pour apprendre le skill ("Guerrier", "Mage" ou "ANY"). */
+    public String requiredClass;
 
     public Skill() {
-        super("", "", 0); // Constructeur vide pour le JSON Loader
+        super("", "", 0); // Constructeur vide requis pour le JSON Loader
     }
+
+    // --- Surcharges BattleAction ---
 
     @Override
     public int getAPCost() {
@@ -41,24 +70,33 @@ public class Skill extends BattleAction {
         return false;
     }
 
+    /**
+     * Exécute la logique de la compétence.
+     * <ol>
+     * <li>Consomme les ressources (PM/PA).</li>
+     * <li>Calcule l'effet selon {@link EffectType} et les stats du lanceur.</li>
+     * <li>Applique l'effet à la cible.</li>
+     * <li>Log l'action dans la console de combat.</li>
+     * </ol>
+     */
     @Override
     public void execute(Fighter user, Fighter target) {
-        // Consommation des ressources
+        // 1. Consommation
         if (type == SkillType.ART) user.consumePA(cost);
         if (type == SkillType.MAGIC) user.consumePM(cost);
 
-        // Application de l'effet
+        // 2. Application de l'effet
         switch (effectType) {
             case DAMAGE:
                 int dmg = 0;
                 if (type == SkillType.ART) {
-                    // Pour les arts, power est souvent un multiplicateur (ex: 1.5x Force)
+                    // Formule Physique : (Force * Puissance) - Défense Cible
                     dmg = (int)(user.getFOR() * power) - target.getDEF();
                 } else {
-                    // Pour la magie, power est souvent une valeur fixe ajoutée à la FORM
+                    // Formule Magique : (ForceMagique + Puissance) - DéfenseMagique Cible
                     dmg = (int)(user.getFORM() + power) - target.getDEFM();
                 }
-                if (dmg < 1) dmg = 1;
+                if (dmg < 1) dmg = 1; // Dégâts minimums garantis
                 target.takeDamage(dmg);
                 BattleSystem.addLog(user.getName() + " utilise " + name + " : " + dmg + " dégâts !");
                 break;
@@ -79,14 +117,12 @@ public class Skill extends BattleAction {
                 break;
 
             case BUFF_STR:
-                // Simplification : Buff permanent pour le combat (à reset à la fin du combat idéalement)
-                // Dans une version avancée, il faudrait une liste de Buffs temporaires dans Fighter
+                // Note : Ce buff est permanent jusqu'à la fin du combat ou rechargement.
+                // Une amélioration serait d'avoir un système de StatusEffect temporaire.
                 int buffStr = (int)power;
                 target.setStats(target.getFOR() + buffStr, target.getDEF(), target.getFORM(), target.getDEFM(), target.getVIT());
                 BattleSystem.addLog(user.getName() + " augmente sa Force de " + buffStr + " !");
                 break;
-
-            // Ajoutez d'autres cas (BUFF_DEF, etc.)
         }
     }
 }

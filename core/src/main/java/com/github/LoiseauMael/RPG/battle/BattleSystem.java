@@ -9,19 +9,40 @@ import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
-import com.github.LoiseauMael.RPG.Enemy;
+import com.github.LoiseauMael.RPG.model.entities.Enemy;
 import com.github.LoiseauMael.RPG.Main;
-import com.github.LoiseauMael.RPG.Player;
+import com.github.LoiseauMael.RPG.model.entities.Player;
 
+/**
+ * Gère la logique et le déroulement des combats (Tour par tour dynamique / ATB).
+ * <p>
+ * Responsabilités :
+ * <ul>
+ * <li>Gestion des états du combat (Tour du joueur, Tour ennemi, Victoire, Défaite).</li>
+ * <li>Gestion de la barre d'initiative (ATB) basée sur la vitesse (VIT).</li>
+ * <li>Gestion de l'interface utilisateur spécifique au combat (Logs).</li>
+ * <li>Attribution des récompenses (XP, Or) en fin de combat.</li>
+ * </ul>
+ */
 public class BattleSystem {
 
+    /**
+     * Enumération des états possibles du combat.
+     */
     public enum BattleState {
+        /** En attente de remplissage des barres ATB. */
         WAITING,
+        /** Le joueur doit choisir une action (Menu). */
         PLAYER_TURN,
+        /** Le joueur a choisi de bouger et doit sélectionner une case. */
         PLAYER_MOVING,
+        /** Le joueur a choisi une compétence et doit sélectionner une cible. */
         PLAYER_SELECTING_TARGET,
+        /** L'IA de l'ennemi est en train de jouer. */
         ENEMY_TURN,
+        /** L'ennemi est vaincu. */
         VICTORY,
+        /** Le joueur est vaincu. */
         GAME_OVER
     }
 
@@ -44,6 +65,13 @@ public class BattleSystem {
     private Table logTable;
     private Skin skin;
 
+    /**
+     * Initialise un nouveau combat.
+     *
+     * @param game Instance principale du jeu (pour l'accès aux états globaux).
+     * @param player Le personnage du joueur.
+     * @param enemy L'adversaire rencontré.
+     */
     public BattleSystem(Main game, Player player, Enemy enemy) {
         this.game = game;
         this.player = player;
@@ -83,6 +111,10 @@ public class BattleSystem {
         logScroll.setFadeScrollBars(false);
     }
 
+    /**
+     * Ajoute un message dans le journal de combat visible à l'écran.
+     * @param message Le texte à afficher.
+     */
     public static void addLog(String message) {
         Gdx.app.log("COMBAT", message);
         combatLogs.add("> " + message);
@@ -106,6 +138,12 @@ public class BattleSystem {
         return logScroll;
     }
 
+    /**
+     * Met à jour la logique du combat à chaque frame.
+     * Gère la progression de l'ATB et les transitions d'état.
+     *
+     * @param delta Temps écoulé depuis la dernière frame.
+     */
     public void update(float delta) {
         updateLogUI();
 
@@ -194,15 +232,20 @@ public class BattleSystem {
 
     // --- INTERACTION JOUEUR ---
 
-    // NOUVEAU : Permet d'annuler une sélection en cours (bouger ou viser) pour changer d'avis
+    /**
+     * Annule l'action ou le déplacement en cours de sélection.
+     * Permet au joueur de revenir au menu principal du combat.
+     */
     public void cancelSelection() {
         if (state == BattleState.PLAYER_MOVING || state == BattleState.PLAYER_SELECTING_TARGET) {
             state = BattleState.PLAYER_TURN;
             pendingAction = null;
-            // On ne log pas forcément pour ne pas spammer, ou juste un feedback visuel
         }
     }
 
+    /**
+     * Active le mode déplacement pour le joueur si celui-ci n'a pas encore bougé ce tour-ci.
+     */
     public void enableMovePhase() {
         // Si on visait une attaque, on annule la visée pour passer en mode mouvement
         if (state == BattleState.PLAYER_SELECTING_TARGET) {
@@ -217,6 +260,9 @@ public class BattleSystem {
         }
     }
 
+    /**
+     * Passe le tour du joueur volontairement.
+     */
     public void playerPassTurn() {
         if (state == BattleState.PLAYER_TURN || state == BattleState.PLAYER_SELECTING_TARGET || state == BattleState.PLAYER_MOVING) {
             addLog("Vous passez votre tour.");
@@ -224,6 +270,12 @@ public class BattleSystem {
         }
     }
 
+    /**
+     * Gère les clics sur la grille de combat.
+     *
+     * @param x Coordonnée X de la case cliquée (monde).
+     * @param y Coordonnée Y de la case cliquée (monde).
+     */
     public void handleGridClick(float x, float y) {
         // Clic pour quitter l'écran de victoire
         if (state == BattleState.VICTORY) {
@@ -238,6 +290,9 @@ public class BattleSystem {
         else if (state == BattleState.PLAYER_SELECTING_TARGET) tryAttackTarget(tileX, tileY);
     }
 
+    /**
+     * Tente de déplacer le joueur vers la case cible.
+     */
     public void tryMovePlayerTo(int targetX, int targetY) {
         int dist = Math.abs(targetX - player.getTileX()) + Math.abs(targetY - player.getTileY());
         if (dist <= player.getDEP()) {
@@ -259,6 +314,10 @@ public class BattleSystem {
         return t;
     }
 
+    /**
+     * Prépare une action (sort/attaque) et passe en mode sélection de cible.
+     * @param action L'action à effectuer.
+     */
     public void startTargetSelection(BattleAction action) {
         // Si on était en train de bouger ou de viser un autre sort, on reset pour prendre la nouvelle action
         if (state == BattleState.PLAYER_MOVING || state == BattleState.PLAYER_SELECTING_TARGET) {
@@ -284,6 +343,9 @@ public class BattleSystem {
         return t;
     }
 
+    /**
+     * Tente d'exécuter l'action en attente sur la case ciblée.
+     */
     public void tryAttackTarget(int tx, int ty) {
         if (enemy.getTileX() == tx && enemy.getTileY() == ty) {
             int dist = Math.abs(player.getTileX() - enemy.getTileX()) + Math.abs(player.getTileY() - enemy.getTileY());

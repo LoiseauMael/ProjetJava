@@ -6,12 +6,24 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.Main.ShopEntry;
-import com.github.LoiseauMael.RPG.SwordMan;
-import com.github.LoiseauMael.RPG.Wizard;
+import com.github.LoiseauMael.RPG.model.entities.SwordMan;
+import com.github.LoiseauMael.RPG.model.entities.Wizard;
 import com.github.LoiseauMael.RPG.items.*;
 
+/**
+ * Utilitaire générique pour charger des listes d'objets depuis un JSON.
+ * <p>
+ * Similaire à ShopLoader, mais potentiellement utilisé pour d'autres contextes (loot, coffres).
+ * Note : Sa logique de détection des types de potions est basée sur le nom de l'objet.
+ */
 public class ItemLoader {
 
+    /**
+     * Charge une liste d'objets avec leurs prix.
+     *
+     * @param jsonPath Le chemin interne vers le fichier JSON.
+     * @return Une liste de ShopEntry (Item + Prix).
+     */
     public static Array<ShopEntry> loadShopItems(String jsonPath) {
         Array<ShopEntry> inventory = new Array<>();
         JsonReader reader = new JsonReader();
@@ -30,8 +42,7 @@ public class ItemLoader {
                 switch (type) {
                     case "CONSUMABLE":
                         int val = itemVal.getInt("effectValue");
-                        // Simplification : on détecte le type par le nom ou un champ 'effectType'
-                        // Ici on suppose HealPotion par défaut pour l'exemple
+                        // Détection simple du type de potion basée sur le nom
                         if (name.contains("Vie")) item = new HealthPotion(name, desc, val);
                         else if (name.contains("Ether")) item = new ManaPotion(name, desc, val);
                         break;
@@ -48,7 +59,7 @@ public class ItemLoader {
                         break;
 
                     case "ARMOR":
-                        // Logique similaire pour Armor...
+                        // Logique pour les armures (non implémentée dans cet extrait)
                         break;
                 }
 

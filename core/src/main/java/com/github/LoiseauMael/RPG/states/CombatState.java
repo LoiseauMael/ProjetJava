@@ -15,7 +15,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Array;
-import com.github.LoiseauMael.RPG.Enemy;
+import com.github.LoiseauMael.RPG.model.entities.Enemy;
 import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.battle.AttackAction;
 import com.github.LoiseauMael.RPG.battle.BattleSystem;

@@ -38,7 +38,7 @@
             "selectedLayer": 10,
             "viewCenter": {
                 "x": 287.3333333333333,
-                "y": 1446.6666666666665
+                "y": 351.99999999999994
             }
         },
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx": {
@@ -162,6 +162,8 @@
     "project": "test.tiled-project",
     "property.type": "string",
     "recentFiles": [
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx",
+        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/foret.tmx",
         "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/forêt.tmx",
         "tuiles/house_details.tsx",
@@ -171,8 +173,6 @@
         "tuiles/sans titr.tmx",
         "tuiles/exterior.tsx",
         "tuiles/ground_grass_details.tsx",
-        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/placement.tsx",
-        "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
         "map/test.tmx"
     ],
     "tileset.lastUsedFilter": "Fichiers de jeu de tuiles Tiled (*.tsx *.xml)",

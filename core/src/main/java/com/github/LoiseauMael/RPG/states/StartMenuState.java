@@ -10,6 +10,17 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.github.LoiseauMael.RPG.Main;
 import com.github.LoiseauMael.RPG.save.SaveManager;
 
+/**
+ * État du menu principal affiché au lancement du jeu.
+ * <p>
+ * Offre les options :
+ * <ul>
+ * <li><b>Continuer</b> : Si une sauvegarde existe, charge la partie.</li>
+ * <li><b>Nouvelle Partie</b> : Si aucune sauvegarde n'existe, lance la création de personnage.</li>
+ * <li><b>Supprimer Sauvegarde</b> : Permet de réinitialiser la progression.</li>
+ * <li><b>Quitter</b> : Ferme l'application.</li>
+ * </ul>
+ */
 public class StartMenuState implements IGameState {
     private final Main game;
 
@@ -17,6 +28,10 @@ public class StartMenuState implements IGameState {
         this.game = game;
     }
 
+    /**
+     * Initialise le menu.
+     * Vérifie la présence d'une sauvegarde pour afficher les boutons appropriés.
+     */
     @Override
     public void enter() {
         // On définit le processeur d'entrée sur le Stage du menu
@@ -25,6 +40,9 @@ public class StartMenuState implements IGameState {
         rebuildMenu();
     }
 
+    /**
+     * Construit les boutons du menu en fonction de l'existence du fichier de sauvegarde.
+     */
     private void rebuildMenu() {
         game.startStage.clear();
 
@@ -109,6 +127,7 @@ public class StartMenuState implements IGameState {
         game.startStage.act(delta);
     }
 
+    /** Dessine le menu sur un fond noir. */
     @Override
     public void draw(com.badlogic.gdx.graphics.g2d.SpriteBatch batch) {
         // Effacer l'écran avec un fond noir

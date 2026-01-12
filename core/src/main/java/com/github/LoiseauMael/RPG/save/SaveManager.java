@@ -4,15 +4,25 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
 import com.github.LoiseauMael.RPG.Main;
-import com.github.LoiseauMael.RPG.Player;
-import com.github.LoiseauMael.RPG.SwordMan;
-import com.github.LoiseauMael.RPG.Wizard;
+import com.github.LoiseauMael.RPG.model.entities.Player;
+import com.github.LoiseauMael.RPG.model.entities.SwordMan;
+import com.github.LoiseauMael.RPG.model.entities.Wizard;
 import com.github.LoiseauMael.RPG.items.*;
 
+/**
+ * Gestionnaire statique responsable de la sauvegarde et du chargement de la partie.
+ * <p>
+ * Il convertit l'état actuel du jeu (Main, Player) en {@link SaveData} pour l'écriture,
+ * et inversement pour la lecture.
+ */
 public class SaveManager {
 
     private static final String SAVE_FILE = "save.json";
 
+    /**
+     * Sauvegarde l'état actuel du jeu dans un fichier JSON local.
+     * @param game L'instance principale du jeu contenant les données à sauver.
+     */
     public static void saveGame(Main game) {
         if (game.player == null) return;
 
@@ -20,7 +30,7 @@ public class SaveManager {
         SaveData data = new SaveData();
         Player player = game.player;
 
-        // --- 1. Sauvegarde du Joueur ---
+        // --- 1. Extraction des données du Joueur ---
         data.playerClass = (player instanceof Wizard) ? "Wizard" : "SwordMan";
         data.level = player.getLevel();
         data.exp = player.getExp();
@@ -31,21 +41,20 @@ public class SaveManager {
         data.x = player.get_positionX();
         data.y = player.get_positionY();
 
-        // --- 2. Sauvegarde de l'Inventaire ---
+        // --- 2. Conversion de l'Inventaire ---
         for (Item item : player.getInventory()) {
             data.inventory.add(createItemData(item));
         }
 
-        // --- 3. Sauvegarde de l'Équipement ---
+        // --- 3. Conversion de l'Équipement ---
         if (player.getEquippedWeapon() != null) data.equippedWeapon = createItemData(player.getEquippedWeapon());
         if (player.getEquippedArmor() != null) data.equippedArmor = createItemData(player.getEquippedArmor());
         if (player.getEquippedRelic() != null) data.equippedRelic = createItemData(player.getEquippedRelic());
 
-        // --- 4. Sauvegarde du Monde ---
-        // On sauvegarde le nom de la carte actuelle pour pouvoir la recharger au redémarrage
+        // --- 4. Sauvegarde de l'état du Monde ---
         data.currentMapName = game.currentMapName;
 
-        // Gestion des ennemis morts (Boucle pour éviter l'erreur de type Array vs ArrayList)
+        // Copie des IDs d'ennemis morts (copie défensive pour éviter les problèmes de références)
         data.deadEnemyIds.clear();
         if (game.deadEnemyIds != null) {
             for (Integer id : game.deadEnemyIds) {
@@ -53,11 +62,18 @@ public class SaveManager {
             }
         }
 
+        // Écriture sur le disque
         FileHandle file = Gdx.files.local(SAVE_FILE);
         file.writeString(json.prettyPrint(data), false);
         System.out.println("Partie sauvegardée : Map=" + data.currentMapName + " Pos=(" + data.x + "," + data.y + ")");
     }
 
+    /**
+     * Charge la partie depuis le fichier JSON et reconstruit l'état du jeu.
+     * <p>
+     * Cette méthode réinstancie le Joueur, vide et remplit l'inventaire, et restaure la carte.
+     * @param game L'instance du jeu à mettre à jour.
+     */
     public static void loadGame(Main game) {
         FileHandle file = Gdx.files.local(SAVE_FILE);
         if (!file.exists()) return;
@@ -65,27 +81,25 @@ public class SaveManager {
         Json json = new Json();
         SaveData data = json.fromJson(SaveData.class, file.readString());
 
-        // 1. Recréation du Joueur
+        // 1. Recréation de l'instance Joueur (Factory)
         if ("Wizard".equals(data.playerClass)) {
             game.player = Wizard.create(0, 0);
         } else {
             game.player = SwordMan.create(0, 0);
         }
 
-        // Recharger les compétences (Important !)
+        // Important : Réapprendre les skills basés sur le niveau chargé
         game.player.updateKnownSkills();
 
-        // 2. Application de la position
+        // 2. Restauration Position & Stats
         game.player.set_position(data.x, data.y);
-
-        // 3. Restauration Stats
         game.player.setLevel(data.level);
         game.player.setExp(data.exp);
         game.player.setMoney(data.money);
         game.player.setPV(data.currentPV);
         game.player.setPM(data.currentPM);
 
-        // 4. Restauration de l'Inventaire
+        // 3. Reconstruction de l'Inventaire (ItemData -> Item Java)
         if (data.inventory != null) {
             for (SaveData.ItemData itemData : data.inventory) {
                 Item item = createItemFromData(itemData);
@@ -93,7 +107,7 @@ public class SaveManager {
             }
         }
 
-        // 5. Restauration de l'Équipement
+        // 4. Rééquipement
         if (data.equippedWeapon != null) {
             Item w = createItemFromData(data.equippedWeapon);
             if (w instanceof Weapon) game.player.equip((Weapon) w);
@@ -107,12 +121,11 @@ public class SaveManager {
             if (r instanceof Relic) game.player.equip((Relic) r);
         }
 
-        // 6. Restauration du Monde
-        // C'est ICI que se corrige le bug de l'écran noir/mauvaise map
+        // 5. Restauration de la Carte
         if (data.currentMapName != null && !data.currentMapName.isEmpty()) {
             game.currentMapName = data.currentMapName;
         } else {
-            game.currentMapName = "map.tmx"; // Sécurité
+            game.currentMapName = "map.tmx"; // Fallback de sécurité
         }
 
         game.deadEnemyIds.clear();
@@ -122,10 +135,12 @@ public class SaveManager {
             }
         }
 
-        System.out.println("SaveManager chargé. Map: " + game.currentMapName + " Pos: " + game.player.get_positionX() + "," + game.player.get_positionY());
+        System.out.println("Partie chargée avec succès.");
     }
 
-    // --- Helpers inchangés ---
+    // --- Méthodes utilitaires de conversion (Helpers) ---
+
+    /** Convertit un Item Java en ItemData sérialisable. */
     private static SaveData.ItemData createItemData(Item item) {
         SaveData.ItemData data = new SaveData.ItemData();
         data.name = item.getName();
@@ -151,6 +166,7 @@ public class SaveManager {
             data.bonus2 = r.defenseMultiplier;
         } else if (item instanceof Consumable) {
             data.type = "CONSUMABLE";
+            // Gestion des sous-types de potions
             if (item instanceof HealthPotion) {
                 data.specificType = "HEALTH";
                 data.bonus1 = ((HealthPotion) item).getAmount();
@@ -165,8 +181,10 @@ public class SaveManager {
         return data;
     }
 
+    /** Convertit un ItemData chargé en objet Item Java concret. */
     private static Item createItemFromData(SaveData.ItemData data) {
         Class<? extends Player> reqClass = resolveClass(data.requiredClass);
+
         if ("WEAPON".equals(data.type)) {
             Weapon w = new Weapon(data.name, data.description, reqClass, (int) data.bonus1, (int) data.bonus2);
             w.setCount(data.count);

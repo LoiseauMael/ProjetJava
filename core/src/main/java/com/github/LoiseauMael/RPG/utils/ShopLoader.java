@@ -5,18 +5,29 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.github.LoiseauMael.RPG.Main;
-import com.github.LoiseauMael.RPG.SwordMan;
-import com.github.LoiseauMael.RPG.Wizard;
+import com.github.LoiseauMael.RPG.model.entities.SwordMan;
+import com.github.LoiseauMael.RPG.model.entities.Wizard;
 import com.github.LoiseauMael.RPG.items.*;
 
+/**
+ * Chargeur responsable de l'initialisation de la boutique du jeu.
+ * <p>
+ * Lit le fichier JSON 'data/shop.json' pour créer les objets vendus par les marchands.
+ * Gère la conversion des types (Armes, Armures, Potions, Reliques) et les restrictions de classe.
+ */
 public class ShopLoader {
 
+    /**
+     * Charge les articles du magasin dans l'inventaire global du marchand (game.merchantInventory).
+     *
+     * @param game L'instance principale du jeu où l'inventaire sera stocké.
+     */
     public static void loadShop(Main game) {
         game.merchantInventory = new Array<>();
         JsonReader reader = new JsonReader();
 
         try {
-            // Lecture du fichier
+            // Lecture du fichier JSON interne
             JsonValue root = reader.parse(Gdx.files.internal("data/shop.json"));
             Gdx.app.log("ShopLoader", "Fichier JSON trouvé. Début du chargement...");
 
@@ -30,21 +41,21 @@ public class ShopLoader {
                     Item item = null;
 
                     // --- 1. LECTURE INTELLIGENTE DES STATS ---
-                    // On essaie de lire "statBonus", sinon "damage", sinon "defense"
+                    // Tente de lire "statBonus", sinon bascule sur "damage" ou "defense"
                     int primaryStat = entry.getInt("statBonus", 0);
                     if (primaryStat == 0) primaryStat = entry.getInt("damage", 0);
                     if (primaryStat == 0) primaryStat = entry.getInt("defense", 0);
 
-                    // Idem pour la stat secondaire
+                    // Tente de lire "secondaryStat", sinon bascule sur "magic" ou "magicDef"
                     int secondaryStat = entry.getInt("secondaryStat", 0);
                     if (secondaryStat == 0) secondaryStat = entry.getInt("magic", 0);
                     if (secondaryStat == 0) secondaryStat = entry.getInt("magicDef", 0);
 
-                    // Classe requise
+                    // Détermine la classe requise pour équiper l'objet (Guerrier, Mage, etc.)
                     String reqClassStr = entry.getString("requiredClass", "ANY");
                     Class reqClass = getClassFromString(reqClassStr);
 
-                    // --- 2. CRÉATION DE L'OBJET ---
+                    // --- 2. CRÉATION DE L'OBJET SELON LE TYPE ---
                     switch (type) {
                         case "POTION_HP":
                         case "CONSUMABLE":
@@ -67,7 +78,6 @@ public class ShopLoader {
                             item = new Armor(name, desc, reqClass, primaryStat, secondaryStat);
                             break;
 
-                        // C'EST ICI QU'IL MANQUAIT LE CAS POUR LES RELIQUES
                         case "RELIC":
                             float dmgMult = entry.getFloat("dmgMult", 1.0f);
                             float defMult = entry.getFloat("defMult", 1.0f);
@@ -75,9 +85,10 @@ public class ShopLoader {
                             break;
 
                         default:
-                            Gdx.app.error("ShopLoader", "Type ignoré : " + type);
+                            Gdx.app.error("ShopLoader", "Type d'objet ignoré : " + type);
                     }
 
+                    // Ajout de l'objet à la liste de vente
                     if (item != null) {
                         game.merchantInventory.add(new Main.ShopEntry(item, price));
                     }
@@ -91,6 +102,12 @@ public class ShopLoader {
         }
     }
 
+    /**
+     * Convertit une chaîne de caractères en classe Java correspondante (Entity).
+     *
+     * @param className Le nom de la classe (ex: "Guerrier", "Wizard").
+     * @return La classe Java (SwordMan.class, Wizard.class) ou null si aucune restriction.
+     */
     private static Class getClassFromString(String className) {
         if (className.equalsIgnoreCase("Guerrier") || className.equalsIgnoreCase("SwordMan")) return SwordMan.class;
         if (className.equalsIgnoreCase("Mage") || className.equalsIgnoreCase("Wizard")) return Wizard.class;

@@ -1,8 +1,15 @@
 package com.github.LoiseauMael.RPG.battle;
 
-import com.github.LoiseauMael.RPG.Fighter;
+import com.github.LoiseauMael.RPG.model.entities.Fighter;
 import com.badlogic.gdx.Gdx;
 
+/**
+ * Représente l'intention de se déplacer lors d'un tour de combat.
+ * <p>
+ * Contrairement aux autres actions, celle-ci ne cible pas une entité mais
+ * change l'état du {@link BattleSystem} pour permettre la sélection d'une case.
+ * Coût : 0 ressource (généralement limité par la statistique DEP).
+ */
 public class MoveAction extends BattleAction {
 
     public MoveAction() {
@@ -12,25 +19,25 @@ public class MoveAction extends BattleAction {
 
     @Override
     public int getAPCost() {
-        return 0; // Initier le déplacement est souvent gratuit, ou le coût est calculé par case
+        return 0; // Le déplacement est gratuit en PA (géré par la stat DEP)
     }
 
-    // --- CORRECTION : Ajout de la méthode manquante ---
     @Override
     public int getMPCost() {
-        return 0; // Se déplacer ne coûte pas de Mana
+        return 0;
     }
 
     @Override
     public boolean canExecute(Fighter user) {
-        // On peut toujours essayer de bouger (sauf si immobilisé, logique à ajouter plus tard si besoin)
+        // On peut toujours sélectionner l'option "Bouger"
+        // (La vérification "a déjà bougé" est faite par le BattleSystem)
         return true;
     }
 
     @Override
     public void execute(Fighter user, Fighter target) {
-        // Le déplacement est un cas particulier souvent géré directement par le BattleSystem
-        // via des clics sur la carte, donc cette méthode peut rester simple ou servir de log.
+        // Le déplacement effectif est géré par le BattleSystem via les clics souris.
+        // Cette méthode sert principalement de log ou de trigger visuel si nécessaire.
         Gdx.app.log("Combat", user.getClass().getSimpleName() + " se prepare a bouger.");
     }
 }

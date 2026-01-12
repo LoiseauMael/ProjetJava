@@ -13,6 +13,12 @@ import com.github.LoiseauMael.RPG.items.Equipment;
 import com.github.LoiseauMael.RPG.items.Relic;
 import com.github.LoiseauMael.RPG.items.Weapon;
 
+/**
+ * État gérant l'interface de la boutique.
+ * <p>
+ * Affiche la liste des objets vendus par le marchand actuel, permet l'achat si le joueur a assez d'or,
+ * et affiche les bonus des équipements (ATK, DEF, etc.).
+ */
 public class ShopState implements IGameState {
     private Main game;
 
@@ -20,12 +26,19 @@ public class ShopState implements IGameState {
         this.game = game;
     }
 
+    /**
+     * Initialise l'interface de la boutique et active la gestion des clics.
+     */
     @Override
     public void enter() {
         Gdx.input.setInputProcessor(game.shopStage);
         rebuildShopUI();
     }
 
+    /**
+     * Construit la liste des objets à vendre dans l'interface Scene2D.
+     * Gère l'affichage des prix, des statistiques d'objets et l'activation des boutons d'achat.
+     */
     private void rebuildShopUI() {
         game.shopTable.clear();
         game.shopTable.defaults().pad(5);
@@ -77,7 +90,7 @@ public class ShopState implements IGameState {
 
                 TextButton buyBtn = new TextButton("Acheter", game.skin);
 
-                // Vérification si équipable
+                // Vérification si équipable par la classe du joueur
                 boolean canEquip = true;
                 if (entry.item instanceof Equipment) {
                     canEquip = ((Equipment)entry.item).canEquip(game.player);
@@ -98,7 +111,7 @@ public class ShopState implements IGameState {
                         if (game.player.getMoney() >= entry.price) {
                             game.player.addMoney(-entry.price);
                             game.player.addItem(entry.item);
-                            rebuildShopUI();
+                            rebuildShopUI(); // Met à jour l'affichage (argent restant)
                         }
                     }
                 });
@@ -119,7 +132,17 @@ public class ShopState implements IGameState {
     }
 
     @Override public void update(float delta) { game.shopStage.act(delta); }
-    @Override public void draw(SpriteBatch batch) { game.explorationState.draw(batch); game.shopStage.draw(); }
-    @Override public void handleInput() { if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE)) game.changeState(game.explorationState); }
+
+    /** Dessine le fond (exploration) puis l'interface du magasin. */
+    @Override public void draw(SpriteBatch batch) {
+        game.explorationState.draw(batch);
+        game.shopStage.draw();
+    }
+
+    @Override public void handleInput() {
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE))
+            game.changeState(game.explorationState);
+    }
+
     @Override public void exit() { game.shopTable.clear(); }
 }

@@ -4,18 +4,29 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch; // Import correct
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.github.LoiseauMael.RPG.Main;
-import com.github.LoiseauMael.RPG.Player;
+import com.github.LoiseauMael.RPG.model.entities.Player;
 import com.github.LoiseauMael.RPG.items.Equipment;
 import com.github.LoiseauMael.RPG.items.Item;
 import com.github.LoiseauMael.RPG.save.SaveManager;
 
+/**
+ * État représentant le menu de pause (In-Game Menu).
+ * <p>
+ * Permet au joueur de :
+ * <ul>
+ * <li>Consulter ses statistiques (PV, PM, PA, XP, Or, etc.).</li>
+ * <li>Gérer son équipement (Arme, Armure, Relique).</li>
+ * <li>Utiliser des objets depuis l'inventaire.</li>
+ * <li>Sauvegarder la partie ou quitter le jeu.</li>
+ * </ul>
+ */
 public class MenuState implements IGameState {
     private Main game;
 
@@ -23,17 +34,28 @@ public class MenuState implements IGameState {
         this.game = game;
     }
 
+    /**
+     * Active le processeur d'entrée pour l'interface du menu (Stage)
+     * et reconstruit l'interface pour afficher les données à jour.
+     */
     @Override
     public void enter() {
         Gdx.input.setInputProcessor(game.menuStage);
         rebuildMenu();
     }
 
+    /**
+     * Nettoie le tableau du menu à la sortie.
+     */
     @Override
     public void exit() {
         game.menuTable.clear();
     }
 
+    /**
+     * Construit dynamiquement l'interface du menu.
+     * Crée les sections Stats, Équipement et Inventaire basées sur l'état actuel du joueur.
+     */
     private void rebuildMenu() {
         game.menuTable.clear();
         game.menuTable.defaults().pad(5);
@@ -41,7 +63,6 @@ public class MenuState implements IGameState {
 
         // --- PARTIE GAUCHE : STATS & EXP ---
         Table leftTable = new Table(game.skin);
-        // Utilisation du background enregistré dans Main.initSkin()
         leftTable.setBackground(game.skin.getDrawable("default-rect"));
 
         leftTable.add(new Label("--- STATISTIQUES (Niveau " + p.getLevel() + ") ---", game.skin)).colspan(2).row();
@@ -56,11 +77,9 @@ public class MenuState implements IGameState {
         // Barre d'expérience
         leftTable.add(new Label("Expérience:", game.skin)).left().padTop(10);
 
-        // Calcul du pourcentage d'XP
         float progress = (p.getExpForNextLevel() > 0) ? (float) p.getExp() / p.getExpForNextLevel() : 0;
         ProgressBar.ProgressBarStyle progressStyle = new ProgressBar.ProgressBarStyle(game.skin.get("default-horizontal", ProgressBar.ProgressBarStyle.class));
 
-        // Si le style n'a pas de knob, on en crée un simple (sécurité)
         if (progressStyle.knob == null && progressStyle.knobBefore == null) {
             progressStyle.knobBefore = getColoredDrawable(10, 10, Color.CYAN);
         }
@@ -76,15 +95,12 @@ public class MenuState implements IGameState {
         Table equipmentTable = new Table(game.skin);
         equipmentTable.add(new Label("--- EQUIPEMENT ---", game.skin)).padBottom(10).row();
 
-        // Slot Arme
         equipmentTable.add(new Label("Arme:", game.skin)).left();
         equipmentTable.add(createEquipmentSlot(p.getEquippedWeapon())).width(200).row();
 
-        // Slot Armure
         equipmentTable.add(new Label("Armure:", game.skin)).left();
         equipmentTable.add(createEquipmentSlot(p.getEquippedArmor())).width(200).row();
 
-        // Slot Relique
         equipmentTable.add(new Label("Relique:", game.skin)).left();
         equipmentTable.add(createEquipmentSlot(p.getEquippedRelic())).width(200).row();
 
@@ -105,7 +121,6 @@ public class MenuState implements IGameState {
         } else {
             for (Item item : p.getInventory()) {
                 TextButton itemBtn = new TextButton(item.getName() + " (x" + item.getCount() + ")", game.skin);
-                // Si c'est un équipement, on change la couleur pour le distinguer
                 if (item instanceof Equipment) {
                     itemBtn.setColor(Color.GOLD);
                 }
@@ -160,11 +175,13 @@ public class MenuState implements IGameState {
         game.menuTable.add(actionTable).padTop(20);
     }
 
+    /** Utilitaire pour ajouter une ligne de statistiques au tableau. */
     private void addStatRow(Table t, String label1, String val1, String label2, String val2) {
         t.add(new Label(label1 + ": " + val1, game.skin)).left().padRight(10);
         t.add(new Label(label2 + ": " + val2, game.skin)).left().row();
     }
 
+    /** Crée un bouton pour un slot d'équipement (permet de déséquiper au clic). */
     private TextButton createEquipmentSlot(Equipment equip) {
         String text = (equip != null) ? equip.getName() : "<Vide>";
         TextButton btn = new TextButton(text, game.skin);
@@ -185,6 +202,7 @@ public class MenuState implements IGameState {
         return btn;
     }
 
+    /** Crée une texture unie de couleur donnée (pour la barre de progression). */
     private TextureRegionDrawable getColoredDrawable(int width, int height, Color color) {
         Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
         pixmap.setColor(color);
@@ -196,22 +214,20 @@ public class MenuState implements IGameState {
 
     @Override public void update(float delta) {}
 
-    // --- CORRECTION DU BUG DE SPRITEBATCH ---
+    /**
+     * Dessine le menu.
+     * Affiche l'état d'exploration en fond (figé) puis le Stage du menu par-dessus.
+     */
     @Override public void draw(SpriteBatch batch) {
-        // On n'appelle PAS batch.begin() ici car explorationState.draw() gère déjà son propre batch/renderer
-        // ou s'il ne le fait pas, c'est à lui de le faire.
-        // MAIS attention : si explorationState.draw() utilise TiledMapRenderer, celui-ci a son propre begin/end.
-        // Si explorationState.draw() dessine aussi des entités avec batch, il fait ses propres begin/end.
-
         // 1. Dessiner le jeu en arrière-plan
         game.explorationState.draw(batch);
 
         // 2. Dessiner l'UI par dessus
-        // Stage gère son propre batch.begin/end, donc on est bon.
         game.menuStage.act();
         game.menuStage.draw();
     }
 
+    /** Permet de quitter le menu avec la touche Echap. */
     @Override public void handleInput() {
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE)) game.changeState(game.explorationState);
     }

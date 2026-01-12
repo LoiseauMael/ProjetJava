@@ -1,9 +1,22 @@
 package com.github.LoiseauMael.RPG.battle;
 
-import com.github.LoiseauMael.RPG.Fighter;
+import com.github.LoiseauMael.RPG.model.entities.Fighter;
 
+/**
+ * Représente une attaque ultime dévastatrice.
+ * <p>
+ * Caractéristiques :
+ * <ul>
+ * <li>Coût très élevé en Mana (PM).</li>
+ * <li>Multiplicateur de dégâts massif (x3).</li>
+ * <li>Portée élevée.</li>
+ * </ul>
+ */
 public class UltimateAction extends BattleAction {
 
+    /**
+     * @param name Nom de l'attaque ultime.
+     */
     public UltimateAction(String name) {
         super(name, "Attaque Ultime (Dégâts x3) !", 5.0f);
     }
@@ -21,9 +34,9 @@ public class UltimateAction extends BattleAction {
 
     @Override
     public void execute(Fighter user, Fighter target) {
-        // CORRECTION : Utilisation de consumePM
         user.consumePM(getMPCost());
 
+        // Dégâts = (Force * 3) - Défense
         int damage = (user.getFOR() * 3) - target.getDEF();
         if (damage < 1) damage = 1;
 
