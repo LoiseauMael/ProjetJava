@@ -5,9 +5,9 @@
     },
     "activeFile": "/home/loiseaumael/Bureau/PCOO/JRPG/assets/tiled/map/map.tmx",
     "expandedProjectPaths": [
-        "map",
+        ".",
         "tuiles",
-        "."
+        "map"
     ],
     "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
     "fileStates": {
